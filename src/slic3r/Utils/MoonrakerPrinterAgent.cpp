@@ -1981,10 +1981,13 @@ nlohmann::json MoonrakerPrinterAgent::build_print_payload_locked() const
     payload["print"]["print_error"]         = 0;
 
     // Map homed axes to bit field: X=bit0, Y=bit1, Z=bit2
-    // WARNING: This only sets bits 0-2, clearing support flags (bit 3+)
+    // WARNING: Apart from the storage state below, this clears the support flags (bit 3+)
     // Bit 3 = 220V voltage, bit 4 = auto recovery, etc.
     // This is acceptable for Moonraker (no AMS, different feature set)
-    int home_flag = 0;
+    // Moonraker printers always have storage (virtual_sdcard). Every push sets the storage state twice,
+    // from "sdcard" and then from home_flag bits 8-9, so both must report it or the send dialog blocks.
+    payload["print"]["sdcard"] = true;
+    int home_flag = DevStorage::HAS_SDCARD_NORMAL << 8;
     if (status_cache.contains("toolhead") && status_cache["toolhead"].contains("homed_axes")) {
         std::string homed = status_cache["toolhead"]["homed_axes"].get<std::string>();
         if (homed.find('X') != std::string::npos)

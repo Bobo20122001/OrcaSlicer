@@ -31,6 +31,7 @@
 #include <boost/beast/websocket/stream.hpp>
 #include <nlohmann/json.hpp>
 
+#include "slic3r/GUI/DeviceCore/DevStorage.h"
 #include "slic3r/Utils/IPrinterAgent.hpp"
 #include "slic3r/Utils/MoonrakerPrinterAgent.hpp"
 
@@ -572,6 +573,25 @@ TEST_CASE("A callback on the stream thread can stop the status stream", "[Moonra
     f.start();
 
     REQUIRE(stopped.get_future().wait_for(5s) == std::future_status::ready);
+    CHECK(f.stops_within(3s));
+}
+
+TEST_CASE("Every status report tells the send dialog the printer has storage", "[MoonrakerPrinterAgent][StatusStream]")
+{
+    std::promise<std::string> first_report;
+    std::once_flag reported;
+    StreamFixture f(Behavior::AnswersPings);
+    f.agent.set_on_local_message_fn([&](std::string, std::string payload) {
+        std::call_once(reported, [&] { first_report.set_value(payload); });
+    });
+    f.start();
+
+    auto report = first_report.get_future();
+    REQUIRE(report.wait_for(5s) == std::future_status::ready);
+    const nlohmann::json print = nlohmann::json::parse(report.get()).at("print");
+    // MachineObject reads the storage state from "sdcard" and then again from home_flag bits 8-9.
+    CHECK(print.at("sdcard") == true);
+    CHECK(((print.at("home_flag").get<int>() >> 8) & 0x3) == DevStorage::HAS_SDCARD_NORMAL);
     CHECK(f.stops_within(3s));
 }
 
