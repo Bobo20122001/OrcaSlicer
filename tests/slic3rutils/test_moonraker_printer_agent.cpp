@@ -183,6 +183,13 @@ public:
         return m_changed.wait_for(lock, 10s, [&] { return m_close_frames >= count; });
     }
 
+    // The answer to the gcodes directory listing, which reports the free space in disk_usage. Null leaves disk_usage out.
+    void set_gcodes_listing(nlohmann::json disk_usage)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_disk_usage = std::move(disk_usage);
+    }
+
     // Hangs up every connection that is waiting.
     void release()
     {
@@ -289,6 +296,16 @@ private:
             return;
         }
         http::response<http::string_body> response{http::status::not_found, request.version()};
+        if (request.target() == "/server/files/directory?path=gcodes") {
+            nlohmann::json result = {{"dirs", nlohmann::json::array()}, {"files", nlohmann::json::array()}};
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                if (!m_disk_usage.is_null())
+                    result["disk_usage"] = m_disk_usage;
+            }
+            response.result(http::status::ok);
+            response.body() = nlohmann::json{{"result", result}}.dump();
+        }
         response.prepare_payload();
         beast::error_code ec;
         http::write(socket, response, ec);
@@ -370,6 +387,7 @@ private:
     int m_http_hung_up  = 0;
     int m_close_frames  = 0;
     bool m_released     = false;
+    nlohmann::json m_disk_usage = {{"total", 8e9}, {"used", 2e9}, {"free", 6e9}};
 };
 
 // Records when the agent dispatches a status report.
@@ -576,11 +594,19 @@ TEST_CASE("A callback on the stream thread can stop the status stream", "[Moonra
     CHECK(f.stops_within(3s));
 }
 
-TEST_CASE("Every status report tells the send dialog the printer has storage", "[MoonrakerPrinterAgent][StatusStream]")
+TEST_CASE("Status reports tell the send dialog whether the gcodes storage has free space", "[MoonrakerPrinterAgent][StatusStream]")
 {
+    auto [disk_usage, has_storage] = GENERATE(table<nlohmann::json, bool>({
+        {{{"total", 8e9}, {"used", 2e9}, {"free", 6e9}}, true},
+        {{{"total", 8e9}, {"used", 8e9}, {"free", 0}}, false},
+        {nullptr, false},
+    }));
+    CAPTURE(disk_usage.dump());
+
     std::promise<std::string> first_report;
     std::once_flag reported;
     StreamFixture f(Behavior::AnswersPings);
+    f.printer.set_gcodes_listing(disk_usage);
     f.agent.set_on_local_message_fn([&](std::string, std::string payload) {
         std::call_once(reported, [&] { first_report.set_value(payload); });
     });
@@ -590,8 +616,38 @@ TEST_CASE("Every status report tells the send dialog the printer has storage", "
     REQUIRE(report.wait_for(5s) == std::future_status::ready);
     const nlohmann::json print = nlohmann::json::parse(report.get()).at("print");
     // MachineObject reads the storage state from "sdcard" and then again from home_flag bits 8-9.
-    CHECK(print.at("sdcard") == true);
-    CHECK(((print.at("home_flag").get<int>() >> 8) & 0x3) == DevStorage::HAS_SDCARD_NORMAL);
+    CHECK(print.at("sdcard") == has_storage);
+    CHECK(((print.at("home_flag").get<int>() >> 8) & 0x3) == (has_storage ? DevStorage::HAS_SDCARD_NORMAL : DevStorage::NO_SDCARD));
+    CHECK(f.stops_within(3s));
+}
+
+TEST_CASE("The status stream keeps re-reading the printer's free space", "[MoonrakerPrinterAgent][StatusStream]")
+{
+    std::mutex mutex;
+    std::condition_variable changed;
+    std::vector<bool> storage_reports;
+    // Chatters sends a message every 50 ms, which the stream re-reads the free space after
+    StreamFixture f(Behavior::Chatters);
+    f.agent.ws_timings.storage_check = 100ms;
+    f.printer.set_gcodes_listing({{"total", 8e9}, {"used", 8e9}, {"free", 0}});
+    f.agent.set_on_local_message_fn([&](std::string, std::string payload) {
+        std::lock_guard<std::mutex> lock(mutex);
+        storage_reports.push_back(nlohmann::json::parse(payload).at("print").at("sdcard").get<bool>());
+        changed.notify_all();
+    });
+    const auto wait_for_storage = [&](bool has_storage) {
+        std::unique_lock<std::mutex> lock(mutex);
+        return changed.wait_for(lock, 5s, [&] { return !storage_reports.empty() && storage_reports.back() == has_storage; });
+    };
+    f.start();
+    REQUIRE(wait_for_storage(false));
+
+    f.printer.set_gcodes_listing({{"total", 8e9}, {"used", 2e9}, {"free", 6e9}});
+    REQUIRE(wait_for_storage(true));
+
+    // A listing without disk usage cannot be checked, which counts as no storage
+    f.printer.set_gcodes_listing(nullptr);
+    CHECK(wait_for_storage(false));
     CHECK(f.stops_within(3s));
 }
 
