@@ -1987,6 +1987,75 @@ TEST_CASE("an option whose type changed is dropped, and the rest still load", "[
     CHECK(out.opt_string("printer_model") == "Test Model");
 }
 
+namespace {
+
+// A config as a cache written before sparse_infill_pattern became a coString
+// holds it: the dictionary claims coEnum for `key`, and the payload is one enum
+// value — the name's index when `name` is nonempty, or the unnamed slot followed
+// by `raw` when the writer had no name for the int. A coString option follows,
+// so a test can tell the stream stayed in sync.
+DynamicPrintConfig load_enum_typed_config(const std::string& key, const std::string& name, int32_t raw)
+{
+    std::ostringstream os(std::ios::binary);
+    {
+        cereal::BinaryOutputArchive ar(os);
+        const std::vector<std::string> keys  { key, "printer_model" };
+        const std::vector<uint16_t>    types { uint16_t(coEnum), uint16_t(coString) };
+        const std::vector<std::string> enums { std::string(), name };   // ENUM_UNNAMED first
+        ar(keys, types, enums);
+        ar(uint32_t(2));
+        ar(uint16_t(0));
+        ar(uint32_t(1));                                            // one enum value
+        if (name.empty()) {
+            ar(uint16_t(0));                                        // ENUM_UNNAMED
+            ar(raw);
+        } else {
+            ar(uint16_t(1));
+        }
+        ar(uint16_t(1));
+        ar(ConfigOptionString("Test Model"));
+    }
+
+    std::istringstream is(os.str(), std::ios::binary);
+    cereal::BinaryInputArchive ar(is);
+    CacheDictionary rdict;
+    rdict.load(ar);
+    DynamicPrintConfig out;
+    load_config(ar, out, rdict);
+    return out;
+}
+
+} // namespace
+
+TEST_CASE("a sparse infill pattern cached as an enum is restored as its string key", "[VendorCache]")
+{
+    // sparse_infill_pattern was a coEnum and is now a coString holding the same
+    // keys, so a cache written before the change names the pattern it stored and
+    // still means that pattern. Dropping it would fall back to the default.
+    const DynamicPrintConfig out = load_enum_typed_config("sparse_infill_pattern", "gyroid", 0);
+    CHECK(out.opt_string("sparse_infill_pattern") == "gyroid");
+    CHECK(out.opt_string("printer_model") == "Test Model");
+}
+
+TEST_CASE("a sparse infill pattern cached without a name falls back instead of guessing one", "[VendorCache]")
+{
+    // The writer could not name the int it stored. This build's InfillPattern
+    // would name that int today, but an ordinal is not a wire contract, so
+    // decoding it could restore a pattern the user never chose.
+    const DynamicPrintConfig out = load_enum_typed_config("sparse_infill_pattern", "", int32_t(ipGyroid));
+    CHECK(out.option("sparse_infill_pattern") == nullptr);
+    CHECK(out.opt_string("printer_model") == "Test Model");
+}
+
+TEST_CASE("an enum-typed cache entry is not restored into a non-string option", "[VendorCache]")
+{
+    // The name-based restore is only for an option that became a string. A
+    // coEnum payload for a key that is now something else is still dropped.
+    const DynamicPrintConfig out = load_enum_typed_config("layer_height", "gyroid", 0);
+    CHECK(out.option("layer_height") == nullptr);
+    CHECK(out.opt_string("printer_model") == "Test Model");
+}
+
 TEST_CASE("skip_config consumes a config without building one", "[VendorCache]")
 {
     DynamicPrintConfig in;
