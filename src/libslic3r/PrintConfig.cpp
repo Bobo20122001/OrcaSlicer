@@ -4875,6 +4875,43 @@ void PrintConfigDef::init_fff_params()
     def->mode = comAdvanced;
     def->set_default_value(new ConfigOptionFloatOrPercent(100., true));
 
+    def = this->add("core_layer_combine", coBool);
+    def->label = L("Core layer combine");
+    def->category = L("Strength");
+    def->tooltip = L("Print a thin shell of fine walls at the object layer height and the core inside it (inner walls and infill) "
+                     "in combined thick layers. Assign a large nozzle to the inner wall and infill filaments to print the core with it.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(false));
+
+    def = this->add("core_layer_height", coFloatOrPercent);
+    def->label = L("Core layer height");
+    def->category = L("Strength");
+    def->tooltip = L("Height of a combined core layer, either in mm or as a percentage of the core nozzle diameter. "
+                     "The number of combined layers is this value divided by the layer height, rounded down.");
+    def->sidetext = L("mm or %");
+    def->min = 0;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionFloatOrPercent(0.6, false));
+
+    def = this->add("shell_wall_loops", coInt);
+    def->label = L("Shell walls");
+    def->category = L("Strength");
+    def->tooltip = L("Number of fine walls printed at the object layer height with the outer wall filament.");
+    def->min = 1;
+    def->max = 1000;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionInt(3));
+
+    def = this->add("core_wall_loops", coInt);
+    def->label = L("Core walls");
+    def->category = L("Strength");
+    def->tooltip = L("Number of coarse walls inside the shell, printed in combined core layers with the inner wall filament. "
+                     "With 0, the core infill touches the shell directly.");
+    def->min = 0;
+    def->max = 1000;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionInt(1));
+
     // BBS
     def          = this->add("enable_wrapping_detection", coBool);
     def->label   = L("Enable clumping detection");

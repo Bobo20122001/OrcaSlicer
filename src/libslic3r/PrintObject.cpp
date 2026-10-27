@@ -1508,7 +1508,11 @@ bool PrintObject::invalidate_state_by_config_options(
             || opt_key == "seam_gap"
             || opt_key == "role_based_wipe_speed"
             || opt_key == "wipe_on_loops"
-            || opt_key == "wipe_speed") {
+            || opt_key == "wipe_speed"
+            || opt_key == "core_layer_combine"
+            || opt_key == "core_layer_height"
+            || opt_key == "shell_wall_loops"
+            || opt_key == "core_wall_loops") {
             steps.emplace_back(posPerimeters);
         } else if (
             opt_key == "small_area_infill_flow_compensation_model") {
