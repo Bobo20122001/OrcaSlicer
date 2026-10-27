@@ -3235,6 +3235,10 @@ void TabPrint::build()
         optgroup->append_single_option_line("minimum_sparse_infill_area", "strength_settings_advanced#minimum-sparse-infill-threshold");
         optgroup->append_single_option_line("infill_combination", "strength_settings_advanced#infill-combination");
         optgroup->append_single_option_line("infill_combination_max_layer_height", "strength_settings_advanced#max-layer-height");
+        optgroup->append_single_option_line("core_layer_combine");
+        optgroup->append_single_option_line("core_layer_height");
+        optgroup->append_single_option_line("shell_wall_loops");
+        optgroup->append_single_option_line("core_wall_loops");
         optgroup->append_single_option_line("detect_narrow_internal_solid_infill", "strength_settings_advanced#detect-narrow-internal-solid-infill");
         optgroup->append_single_option_line("ensure_vertical_shell_thickness", "strength_settings_advanced#ensure-vertical-shell-thickness");
 

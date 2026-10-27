@@ -472,6 +472,17 @@ void ConfigManipulation::update_print_fff_config(DynamicPrintConfig* config, con
         }
     }
 
+    // Core layer combine: the shell and core wall counts replace the wall count, which shows their sum.
+    if (config->has("core_layer_combine") && config->opt_bool("core_layer_combine") &&
+        config->has("shell_wall_loops") && config->has("core_wall_loops") && config->has("wall_loops")) {
+        const int wall_loops = config->opt_int("shell_wall_loops") + config->opt_int("core_wall_loops");
+        if (config->opt_int("wall_loops") != wall_loops) {
+            DynamicPrintConfig new_conf = *config;
+            new_conf.set_key_value("wall_loops", new ConfigOptionInt(wall_loops));
+            apply(config, &new_conf);
+        }
+    }
+
     double sparse_infill_density = config->option<ConfigOptionPercent>("sparse_infill_density")->value;
     int    fill_multiline        = config->option<ConfigOptionInt>("fill_multiline")->value;
     auto timelapse_type = config->opt_enum<TimelapseType>("timelapse_type");
@@ -841,6 +852,11 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig *config, in
 
     bool have_combined_infill = config->opt_bool("infill_combination") && have_infill;
     toggle_line("infill_combination_max_layer_height", have_combined_infill, -1, _L("Enable infill combination and use nonzero sparse infill density to show this setting."));
+
+    bool have_core_layer_combine = config->opt_bool("core_layer_combine");
+    for (auto el : { "core_layer_height", "shell_wall_loops", "core_wall_loops" })
+        toggle_line(el, have_core_layer_combine, -1, _L("Enable core layer combine to show this setting."));
+    toggle_field("wall_loops", !have_core_layer_combine, -1, _L("Core layer combine sets the wall loops to the sum of shell and core walls."));
 
     // Infill patterns that support multiline infill.
     bool          have_multiline_infill_pattern = pattern == ipGyroid || pattern == ipGrid || pattern == ipRectilinear || pattern == ipTpmsD || pattern == ipTpmsFK || pattern == ipCrossHatch || pattern == ipHoneycomb || pattern == ipLateralLattice || pattern == ipLateralHoneycomb || pattern == ipConcentric ||
