@@ -1182,24 +1182,25 @@ void UnsavedChangesDialog::close(Action action)
     this->EndModal(wxID_CLOSE);
 }
 
+DynamicPrintConfig UnsavedChangesDialog::make_save_config(PresetCollection& presets)
+{
+    DynamicPrintConfig             config = presets.get_edited_preset().config;
+    const std::vector<std::string> unselected_options = get_unselected_options(presets.type());
+    if (!unselected_options.empty())
+        config.apply_only(presets.get_selected_preset().config, unselected_options);
+    return config;
+}
+
 bool UnsavedChangesDialog::selected_save_needs_plugin_warning()
 {
-    const auto needs_warning = [this](PresetCollection& presets) {
-        DynamicPrintConfig             config = presets.get_edited_preset().config;
-        const std::vector<std::string> unselected_options = get_unselected_options(presets.type());
-        if (!unselected_options.empty())
-            config.apply_only(presets.get_selected_preset().config, unselected_options);
-        return has_unresolved_plugin_capabilities(config);
-    };
-
     if (m_dependent_presets != nullptr)
-        return needs_warning(*m_dependent_presets);
+        return has_unresolved_plugin_capabilities(make_save_config(*m_dependent_presets));
 
     const PrinterTechnology printer_technology = wxGetApp().preset_bundle->printers.get_edited_preset().printer_technology();
     for (Tab* tab : wxGetApp().tabs_list)
         if (tab->supports_printer_technology(printer_technology) && tab->current_preset_is_dirty()) {
             PresetCollection* presets = tab->get_presets();
-            if (presets != nullptr && needs_warning(*presets))
+            if (presets != nullptr && has_unresolved_plugin_capabilities(make_save_config(*presets)))
                 return true;
         }
     return false;
@@ -1221,14 +1222,9 @@ bool UnsavedChangesDialog::save(PresetCollection* dependent_presets, bool show_s
         // Warn before the save-name dialog: accepting that dialog can delete an overwritten preset,
         // so a Cancel must be decided before it. Transfer reaches save() with
         // show_save_preset_dialog == false and must not warn.
-        if (show_save_preset_dialog) {
-            DynamicPrintConfig             config = preset.config;
-            const std::vector<std::string> unselected_options = get_unselected_options(preset.type);
-            if (!unselected_options.empty())
-                config.apply_only(dependent_presets->get_selected_preset().config, unselected_options);
-            if (!confirm_save_with_unresolved_plugins(this, config, SaveSubject::Preset))
-                return false;
-        }
+        if (show_save_preset_dialog &&
+            !confirm_save_with_unresolved_plugins(this, make_save_config(*dependent_presets), SaveSubject::Preset))
+            return false;
 
         if (!preset.can_overwrite()) {
         //if (preset.is_system || preset.is_default || preset.is_external) {
@@ -1279,10 +1275,7 @@ bool UnsavedChangesDialog::save(PresetCollection* dependent_presets, bool show_s
                 PresetCollection* presets = get_preset_collection(nt.type, wxGetApp().preset_bundle);
                 if (!presets)
                     continue;
-                auto config = std::make_unique<DynamicPrintConfig>(presets->get_edited_preset().config);
-                const std::vector<std::string> unselected_options = get_unselected_options(nt.type);
-                if (!unselected_options.empty())
-                    config->apply_only(presets->get_selected_preset().config, unselected_options);
+                auto config = std::make_unique<DynamicPrintConfig>(make_save_config(*presets));
                 checks.push_back({from_u8(nt.name), config.get()});
                 configs.emplace_back(std::move(config));
             }
