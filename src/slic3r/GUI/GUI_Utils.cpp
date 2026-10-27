@@ -12,6 +12,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/format.hpp>
 #include "libslic3r/Utils.hpp"
+#include <boost/log/trivial.hpp>
 #include <string>
 #include <functional>
 #include <wx/event.h>
