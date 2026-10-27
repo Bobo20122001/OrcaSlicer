@@ -108,7 +108,7 @@ rem so a target that is the source does not take the preset lists away from the
 rem targets after it, and one process does all the deleting.
 :prune
 if not defined TARGETS exit /b 0
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0prune_cached_presets.ps1" -Profiles "%PROFILES%" %TARGETS%
+powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO_ROOT%\scripts\prune_cached_presets.ps1" -Profiles "%PROFILES%" %TARGETS%
 exit /b %errorlevel%
 
 rem Check a target and queue it for pruning; install the caches into it unless
