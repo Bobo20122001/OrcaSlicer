@@ -3805,7 +3805,11 @@ void PrintConfigDef::init_fff_params()
                         "density and above. Only applies when Sparse infill pattern is set to Gyroid.");
     def->set_default_value(new ConfigOptionBool(false));
 
-    def = this->add("sparse_infill_pattern", coEnum);
+    // A free-form string rather than coEnum so that plugins can name their own patterns while the
+    // built-in keys below stay byte-identical in saved presets and projects. enum_values/enum_labels
+    // still describe the built-in choices for the GUI; enum_keys_map lets the GUI resolve them back
+    // to InfillPattern. See infill_pattern_from_key().
+    def = this->add("sparse_infill_pattern", coString);
     def->label = L("Sparse infill pattern");
     def->category = L("Strength");
     def->tooltip = L("This is the line pattern for internal sparse infill.");
@@ -3862,7 +3866,7 @@ void PrintConfigDef::init_fff_params()
     def->enum_labels.push_back(L("Hilbert Curve"));
     def->enum_labels.push_back(L("Archimedean Chords"));
     def->enum_labels.push_back(L("Octagram Spiral"));
-    def->set_default_value(new ConfigOptionEnum<InfillPattern>(ipCrossHatch));
+    def->set_default_value(new ConfigOptionString("crosshatch"));
 
     def = this->add("sparse_infill_smooth_factor", coPercent);
     def->label = L("Sparse infill smooth factor");
@@ -12525,8 +12529,15 @@ std::map<std::string, std::string> validate(const FullPrintConfig &cfg, bool und
     }
 
     // --fill-pattern
-    if (! print_config_def.get("sparse_infill_pattern")->has_enum_value(cfg.sparse_infill_pattern.serialize())) {
-        error_message.emplace("sparse_infill_pattern", _u8L("invalid value ") + cfg.sparse_infill_pattern.serialize());
+    // sparse_infill_pattern stores a built-in key or a raw plugin identifier, with no reserved
+    // identifier syntax. Accept any nonempty value that does not name a built-in pattern as a plugin
+    // identifier; the registry that can confirm it exists is deferred, so existence is checked when
+    // the fill is created. Empty values, and built-in keys the option does not offer, are rejected.
+    {
+        const std::string &sparse_infill_pattern = cfg.sparse_infill_pattern.value;
+        if (! print_config_def.get("sparse_infill_pattern")->has_enum_value(sparse_infill_pattern) &&
+            ! is_plugin_infill_pattern_key(sparse_infill_pattern))
+            error_message.emplace("sparse_infill_pattern", _u8L("invalid value ") + sparse_infill_pattern);
     }
 
     // --top-fill-pattern

@@ -9266,7 +9266,7 @@ std::vector<size_t> Plater::priv::load_files(const std::vector<fs::path>& input_
                         if (load_config && (file_version < app_version) && file_version == Semver("2.3.1-alpha")) {
                             if (!config_loaded.opt_string("sparse_infill_rotate_template").empty()) {
                                 const auto _sparse_infill_pattern =
-                                    config_loaded.option<ConfigOptionEnum<InfillPattern>>("sparse_infill_pattern")->value;
+                                    infill_pattern_from_key(config_loaded.opt_string("sparse_infill_pattern"));
                                 bool is_safe_to_rotate = _sparse_infill_pattern == ipRectilinear || _sparse_infill_pattern == ipLine ||
                                                          _sparse_infill_pattern == ipZigZag || _sparse_infill_pattern == ipCrossZag ||
                                                          _sparse_infill_pattern == ipLockedZag;
@@ -9317,7 +9317,7 @@ std::vector<size_t> Plater::priv::load_files(const std::vector<fs::path>& input_
                             if (load_config && (file_version == Semver("2.3.1-alpha"))) {
                                 if (!config_loaded.opt_string("sparse_infill_rotate_template").empty()) {
                                     const auto _sparse_infill_pattern =
-                                        config_loaded.option<ConfigOptionEnum<InfillPattern>>("sparse_infill_pattern")->value;
+                                        infill_pattern_from_key(config_loaded.opt_string("sparse_infill_pattern"));
                                     bool is_safe_to_rotate = _sparse_infill_pattern == ipRectilinear || _sparse_infill_pattern == ipLine ||
                                                              _sparse_infill_pattern == ipZigZag || _sparse_infill_pattern == ipCrossZag ||
                                                              _sparse_infill_pattern == ipLockedZag;
@@ -17263,7 +17263,7 @@ void adjust_settings_for_flowrate_calib(ModelObjectPtrs& objects, bool linear, i
         _obj->config.set_key_value("bottom_shell_thickness", new ConfigOptionFloat(0));
         _obj->config.set_key_value("detect_thin_wall", new ConfigOptionBool(true));
         _obj->config.set_key_value("filter_out_gap_fill", new ConfigOptionFloat(0));
-        _obj->config.set_key_value("sparse_infill_pattern", new ConfigOptionEnum<InfillPattern>(ipRectilinear));
+        _obj->config.set_key_value("sparse_infill_pattern", new ConfigOptionString(ConfigOptionEnum<InfillPattern>(ipRectilinear).serialize()));
         _obj->config.set_key_value("top_surface_line_width", new ConfigOptionFloatOrPercent(infill_line_width, false));
         _obj->config.set_key_value("internal_solid_infill_line_width", new ConfigOptionFloatOrPercent(infill_line_width, false));
         // ORCA: use the pattern parameter

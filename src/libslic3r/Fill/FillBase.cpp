@@ -99,15 +99,22 @@ Fill* Fill::new_from_type(const InfillPattern type)
     case ipZigZag:              return new FillZigZag();
     case ipCrossZag:            return new FillCrossZag();
     case ipLockedZag:           return new FillLockedZag();
+    // sparse_infill_pattern may hold a plugin-provided identifier, but this build has no plugin
+    // infill API. Fail clearly instead of falling through to an unrelated filler.
+    case ipPlugin:              throw Slic3r::InvalidArgument("unknown or plugin-provided infill pattern; plugin infill patterns require the infill plugin API, which is not available");
     default: throw Slic3r::InvalidArgument("unknown type");
     }
 }
 
 Fill* Fill::new_from_type(const std::string &type)
 {
-    const t_config_enum_values &enum_keys_map = ConfigOptionEnum<InfillPattern>::get_enum_values();
-    t_config_enum_values::const_iterator it = enum_keys_map.find(type);
-    return (it == enum_keys_map.end()) ? nullptr : new_from_type(InfillPattern(it->second));
+    const InfillPattern pattern = infill_pattern_from_key(type);
+    if (pattern == ipPlugin)
+        // A nonempty non-builtin key is a plugin identifier (or a typo); either way this build
+        // cannot create it. Never return nullptr for a value that can pass config validation.
+        throw Slic3r::InvalidArgument("unknown or plugin-provided infill pattern '" + type +
+            "'; plugin infill patterns require the infill plugin API, which is not available");
+    return new_from_type(pattern);
 }
 
 // Force initialization of the Fill::use_bridge_flow() internal static map in a thread safe fashion even on compilers
@@ -125,7 +132,11 @@ bool Fill::use_bridge_flow(const InfillPattern type)
 			delete fill;
 		}
 	}
-	return cached[type] != 0;
+	// ipPlugin is not a built-in filler and the cache is sized by ipCount. Range-check so an
+	// unknown or plugin pattern cannot read past it; no bridge-flow override applies to them.
+	if (type < 0 || type >= ipCount)
+		return false;
+	return cached[size_t(type)] != 0;
 }
 
 Polylines Fill::fill_surface(const Surface *surface, const FillParams &params)

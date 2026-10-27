@@ -30,6 +30,19 @@ std::string get_pure_opt_key(const std::string& opt_key)
     return pure_key;
 }
 
+// A string option that lists its allowed keys stores the raw key; show the translated label that
+// matches it, or the key itself when no label matches (e.g. a plugin-provided infill pattern id).
+wxString get_string_from_key_choice(const std::string& opt_key, const DynamicPrintConfig& config)
+{
+    const ConfigOptionDef* def = config.def()->get(opt_key);
+    const std::string      key = config.opt_string(opt_key);
+    if (!def || def->enum_values.empty() || def->enum_labels.size() != def->enum_values.size())
+        return from_u8(key);
+    auto it = std::find(def->enum_values.begin(), def->enum_values.end(), key);
+    return it == def->enum_values.end() ? from_u8(key)
+                                        : from_u8(_utf8(def->enum_labels[it - def->enum_values.begin()]));
+}
+
 wxString get_string_from_enum(const std::string& opt_key, const DynamicPrintConfig& config, bool is_infill, int idx)
 {
     const ConfigOptionDef& def = config.def()->options.at(opt_key);
@@ -170,7 +183,7 @@ wxString get_string_value(const std::string& opt_key, const DynamicPrintConfig& 
         return _L("Undefined");
     }
     case coString:
-        return from_u8(config.opt_string(pure_key));
+        return get_string_from_key_choice(pure_key, config);
     case coStrings: {
         const ConfigOptionStrings* strings = config.opt<ConfigOptionStrings>(pure_key);
         if (strings) {
@@ -209,7 +222,6 @@ wxString get_string_value(const std::string& opt_key, const DynamicPrintConfig& 
             pure_key == "top_surface_pattern" ||
             pure_key == "bottom_surface_pattern" ||
             pure_key == "internal_solid_infill_pattern" ||
-            pure_key == "sparse_infill_pattern" ||
             pure_key == "ironing_pattern" ||
             pure_key == "support_ironing_pattern" ||
             pure_key == "support_pattern" ||
@@ -223,7 +235,6 @@ wxString get_string_value(const std::string& opt_key, const DynamicPrintConfig& 
             pure_key == "top_surface_pattern" ||
             pure_key == "bottom_surface_pattern" ||
             pure_key == "internal_solid_infill_pattern" ||
-            pure_key == "sparse_infill_pattern" ||
             pure_key == "ironing_pattern" ||
             pure_key == "support_ironing_pattern" ||
             pure_key == "support_pattern" ||

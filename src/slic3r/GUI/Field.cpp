@@ -1533,6 +1533,14 @@ static std::map<std::string, DynamicList*> dynamic_lists;
 
 void Choice::register_dynamic_list(std::string const &optname, DynamicList *list) { dynamic_lists.emplace(optname, list); }
 
+bool is_key_choice_option(const ConfigOptionDef& opt)
+{
+    // A label is required for every key, otherwise the dropdown would mix translated labels with raw
+    // keys; such an option stays an ordinary text field.
+    return opt.type == coString && opt.gui_type == ConfigOptionDef::GUIType::undefined &&
+           !opt.enum_values.empty() && opt.enum_values.size() == opt.enum_labels.size();
+}
+
 void DynamicList::update()
 {
     for (auto c : m_choices) apply_on(c);
@@ -1737,6 +1745,11 @@ void Choice::set_selection()
 		text_value = m_opt.get_default_value<ConfigOptionStrings>()->get_at(m_opt_idx);
 		break;
 	}
+	case coString:{
+        if (is_key_choice_option(m_opt))
+            text_value = from_u8(m_opt.get_default_value<ConfigOptionString>()->value);
+		break;
+	}
 	case coFloatOrPercent: {
 		text_value = double_to_string(m_opt.default_value->getFloat());
 		if (m_opt.get_default_value<ConfigOptionFloatOrPercent>()->percent)
@@ -1760,6 +1773,10 @@ void Choice::set_selection()
 void Choice::set_value(const std::string& value, bool change_event)  //! Redundant?
 {
     m_disable_change_event = !change_event;
+
+	// A key choice stores the raw key, including one that has no dropdown entry (a plugin id).
+	if (is_key_choice_option(m_opt))
+		m_key_choice_value = value;
 
 	size_t idx=0;
 	for (auto el : m_opt.enum_values)
@@ -1788,6 +1805,8 @@ void Choice::set_value(const boost::any& value, bool change_event)
     if (value.empty()) {
         field->SetValue("");
         m_value = value;
+        if (is_key_choice_option(m_opt))
+            m_key_choice_value.clear();
         m_disable_change_event = false;
         return;
     }
@@ -1804,6 +1823,10 @@ void Choice::set_value(const boost::any& value, bool change_event)
 			text_value = wxString::Format(_T("%i"), int(boost::any_cast<int>(value)));
 		else
 			text_value = boost::any_cast<wxString>(value);
+		// A key choice stores the raw key, including one that has no dropdown entry (a plugin id);
+		// keep it so get_value() can give it back when nothing is selected.
+		if (is_key_choice_option(m_opt))
+			m_key_choice_value = into_u8(text_value);
         size_t idx = 0;
         const std::vector<std::string>& enums = m_opt.enum_values.empty() ? m_opt.enum_labels : m_opt.enum_values;
 		for (auto el : enums)
@@ -1871,7 +1894,7 @@ void Choice::set_value(const boost::any& value, bool change_event)
                 selection = val;
 
             if (m_opt_id == "top_surface_pattern" || m_opt_id == "bottom_surface_pattern" ||
-                m_opt_id == "internal_solid_infill_pattern" || m_opt_id == "sparse_infill_pattern" ||
+                m_opt_id == "internal_solid_infill_pattern" ||
                 m_opt_id == "support_base_pattern" || m_opt_id == "support_interface_pattern" ||
                 m_opt_id == "ironing_pattern" || m_opt_id == "support_ironing_pattern" ||
                 m_opt_id == "support_style" || m_opt_id == "curr_bed_type" || m_opt_id == "wipe_tower_wall_type")
@@ -1974,7 +1997,7 @@ boost::any& Choice::get_value()
                 m_value = 0;
         }
         else if (   m_opt_id == "top_surface_pattern" || m_opt_id == "bottom_surface_pattern" ||
-                    m_opt_id == "internal_solid_infill_pattern" || m_opt_id == "sparse_infill_pattern" ||
+                    m_opt_id == "internal_solid_infill_pattern" ||
                     m_opt_id == "support_base_pattern" || m_opt_id == "support_interface_pattern" ||
                     m_opt_id == "ironing_pattern" || m_opt_id == "support_ironing_pattern" ||
                     m_opt_id == "support_style" || m_opt_id == "curr_bed_type" || m_opt_id == "wipe_tower_wall_type")
@@ -1990,6 +2013,17 @@ boost::any& Choice::get_value()
         }
         else
             m_value = field->GetSelection();
+    }
+    else if (is_key_choice_option(m_opt))
+    {
+        // A key choice shows a translated label but stores the raw key of the selected choice. A key
+        // that matches no entry (a plugin id) selects nothing; the read-only dropdown cannot be
+        // cleared by the user, so return the key that was last loaded instead of dropping it.
+        // Selecting a built-in choice replaces it, and set_na_value() clears it.
+        const int selection = field->GetSelection();
+        m_value = selection >= 0 && selection < int(m_opt.enum_values.size())
+                      ? m_opt.enum_values[selection]
+                      : m_key_choice_value;
     }
     else if (m_opt.gui_type == ConfigOptionDef::GUIType::f_enum_open || m_opt.gui_type == ConfigOptionDef::GUIType::i_enum_open) {
         const int ret_enum = field->GetSelection();
@@ -2025,6 +2059,8 @@ void Choice::set_last_meaningful_value()
 void Choice::set_na_value()
 {
     dynamic_cast<choice_ctrl *>(window)->SetSelection(-1);
+    // A cleared selection must read back as no value, not as the key that was loaded last.
+    m_key_choice_value.clear();
     on_change_field();
 }
 

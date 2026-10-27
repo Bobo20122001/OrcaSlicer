@@ -16,6 +16,7 @@
 #include <utility>
 
 #include "../ClipperUtils.hpp"
+#include "../Exception.hpp"
 #include "../Geometry.hpp"
 #include "../Layer.hpp"
 #include "../Print.hpp"
@@ -943,7 +944,7 @@ std::vector<SurfaceFill> group_fills(const Layer &layer, LockRegionParam &lock_p
 		        FlowRole extrusion_role = surface.is_top() ? frTopSolidInfill : (surface.is_solid() ? frSolidInfill : frInfill);
 		        bool     is_bridge 	    = layer.id() > 0 && surface.is_bridge();
 		        params.extruder 	 = layerm.region().extruder(extrusion_role);
-		        params.pattern 		 = region_config.sparse_infill_pattern.value;
+		        params.pattern 		 = infill_pattern_from_key(region_config.sparse_infill_pattern.value);
 		        params.density       = float(region_config.sparse_infill_density);
                 params.lateral_lattice_angle_1 = region_config.lateral_lattice_angle_1;
                 params.lateral_lattice_angle_2 = region_config.lateral_lattice_angle_2;
@@ -1574,6 +1575,7 @@ Polylines Layer::generate_sparse_infill_polylines_for_anchoring(const FillAdapti
 
         switch (surface_fill.params.pattern) {
         case ipCount: continue; break;
+        case ipPlugin: throw Slic3r::InvalidArgument("unknown or plugin-provided infill pattern; plugin infill patterns require the infill plugin API, which is not available");
         case ipSupportBase: continue; break;
         case ipConcentricInternal: continue; break;
         case ipLightning:

@@ -1700,7 +1700,7 @@ TEST_CASE("A static config applies itself onto a config of its type as a lookup 
     SECTION("region config")
     {
         PrintRegionConfig region;
-        region.sparse_infill_pattern.value = ipGyroid;
+        region.sparse_infill_pattern.value = "gyroid";
         region.outer_wall_speed.values     = {37.};
         region.sparse_infill_density.value = 35.;
         FullPrintConfig full;
@@ -1732,11 +1732,43 @@ TEST_CASE("A static config applies itself onto a config of its type as a lookup 
 TEST_CASE("A static config applied onto a config of another type falls back to a lookup by name", "[Config]")
 {
     PrintRegionConfig region;
-    region.sparse_infill_pattern.value = ipGyroid;
+    region.sparse_infill_pattern.value = "gyroid";
     DynamicPrintConfig dynamic;
     REQUIRE_FALSE(region.apply_to(dynamic));
     dynamic.apply(region);
     CHECK(dynamic.opt_serialize("sparse_infill_pattern") == "gyroid");
+}
+
+TEST_CASE("Built-in sparse infill pattern keys map to their built-in patterns", "[Config]")
+{
+    // The stored key is the string saved in presets and projects, so it must keep resolving to the
+    // pattern it has always named.
+    const t_config_enum_values &builtin = ConfigOptionEnum<InfillPattern>::get_enum_values();
+    REQUIRE_FALSE(builtin.empty());
+    for (const auto &[key, value] : builtin) {
+        INFO(key);
+        CHECK_FALSE(is_plugin_infill_pattern_key(key));
+        CHECK(infill_pattern_from_key(key) == InfillPattern(value));
+    }
+
+    // Every choice the option offers resolves to a built-in pattern, so the keys map and the
+    // option's enum_values list cannot drift apart without a failure here.
+    const ConfigOptionDef *def = print_config_def.get("sparse_infill_pattern");
+    REQUIRE(def != nullptr);
+    REQUIRE_FALSE(def->enum_values.empty());
+    for (const std::string &key : def->enum_values) {
+        INFO(key);
+        CHECK(infill_pattern_from_key(key) != ipPlugin);
+    }
+
+    // Any nonempty key naming no built-in pattern is a plugin identifier; its spelling is the
+    // plugin's own and needs no namespace.
+    CHECK(infill_pattern_from_key("my-infill-capability") == ipPlugin);
+    CHECK(is_plugin_infill_pattern_key("my-infill-capability"));
+
+    // A typo or a case variant is not silently read as a built-in pattern either.
+    CHECK(infill_pattern_from_key("gyroidx") == ipPlugin);
+    CHECK(infill_pattern_from_key("Gyroid") == ipPlugin);
 }
 
 TEST_CASE("Default options of enum lists get their definition's keys map", "[Config]")
