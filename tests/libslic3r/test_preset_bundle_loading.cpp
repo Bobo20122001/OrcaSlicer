@@ -431,6 +431,84 @@ TEST_CASE("An inherited printer's per-variant values cover every variant it list
     CHECK(printer->config.option<ConfigOptionFloats>("travel_slope")->values.size() == variant_count);
 }
 
+namespace {
+// A receiver with the given extruder numbers and variant list. nozzles holds the NozzleVolumeType in use on each extruder.
+void set_receiver_layout(DynamicPrintConfig &printer, DynamicPrintConfig &project, const std::vector<int> &ids,
+                         const std::vector<std::string> &variants, const std::vector<int> &nozzles)
+{
+    printer.set_key_value("nozzle_diameter", new ConfigOptionFloats(std::vector<double>(nozzles.size(), 0.4)));
+    printer.set_key_value("extruder_type", new ConfigOptionEnumsGeneric(std::vector<int>(nozzles.size(), etDirectDrive)));
+    printer.set_key_value("printer_extruder_id", new ConfigOptionInts(ids));
+    printer.set_key_value("printer_extruder_variant", new ConfigOptionStrings(variants));
+    project.set_key_value("nozzle_volume_type", new ConfigOptionEnumsGeneric(nozzles));
+}
+
+const std::vector<std::string> h2c_variants = {"Direct Drive Standard", "Direct Drive High Flow", "Direct Drive E3D High Flow",
+                                               "Direct Drive Standard", "Direct Drive High Flow"};
+const std::vector<int> h2c_ids = {1, 1, 1, 2, 2};
+} // namespace
+
+// The author's right Standard nozzle (index 3) lands on the receiver's extruder 2, whichever index that
+// extruder has in the receiver's own layout.
+TEST_CASE("A published printer key lands on the receiver's extruder with the same number", "[Preset][Bundle]")
+{
+    DynamicPrintConfig printer, project;
+    set_receiver_layout(printer, project, {1, 1, 2, 2, 3, 3, 4, 4},
+                        {"Direct Drive Standard", "Direct Drive High Flow", "Direct Drive Standard", "Direct Drive High Flow",
+                         "Direct Drive Standard", "Direct Drive High Flow", "Direct Drive Standard", "Direct Drive High Flow"},
+                        {nvtStandard, nvtStandard, nvtStandard, nvtStandard});
+    const PublishedExtruderLayout author{h2c_ids, h2c_variants};
+
+    CHECK(resolve_published_extruder_slot(author, 0, printer, project) == 0);
+    CHECK(resolve_published_extruder_slot(author, 3, printer, project) == 2);
+}
+
+TEST_CASE("A published printer key skips when the receiver's extruder runs the other nozzle type", "[Preset][Bundle]")
+{
+    DynamicPrintConfig printer, project;
+    set_receiver_layout(printer, project, {1, 1, 2, 2, 3, 3, 4, 4},
+                        {"Direct Drive Standard", "Direct Drive High Flow", "Direct Drive Standard", "Direct Drive High Flow",
+                         "Direct Drive Standard", "Direct Drive High Flow", "Direct Drive Standard", "Direct Drive High Flow"},
+                        {nvtStandard, nvtHighFlow, nvtStandard, nvtStandard});
+    const PublishedExtruderLayout author{h2c_ids, h2c_variants};
+
+    CHECK(resolve_published_extruder_slot(author, 3, printer, project) == -1);
+    CHECK(resolve_published_extruder_slot(author, 4, printer, project) == 3);
+}
+
+TEST_CASE("A published printer key lands on the extruder with its own number on a one-variant-per-extruder receiver", "[Preset][Bundle]")
+{
+    DynamicPrintConfig printer, project;
+    set_receiver_layout(printer, project, {1, 2, 3, 4},
+                        {"Direct Drive Standard", "Direct Drive Standard", "Direct Drive Standard", "Direct Drive Standard"},
+                        {nvtStandard, nvtStandard, nvtStandard, nvtStandard});
+    const PublishedExtruderLayout author{h2c_ids, h2c_variants};
+
+    CHECK(resolve_published_extruder_slot(author, 0, printer, project) == 0);
+    CHECK(resolve_published_extruder_slot(author, 3, printer, project) == 1);
+}
+
+TEST_CASE("A published printer key is skipped when the receiver has no extruder with its number", "[Preset][Bundle]")
+{
+    DynamicPrintConfig printer, project;
+    set_receiver_layout(printer, project, {1}, {"Direct Drive Standard"}, {nvtStandard});
+    const PublishedExtruderLayout author{h2c_ids, h2c_variants};
+
+    CHECK(resolve_published_extruder_slot(author, 0, printer, project) == 0);
+    CHECK(resolve_published_extruder_slot(author, 3, printer, project) == -1);
+}
+
+TEST_CASE("A published printer key is skipped when the receiver's extruder does not offer its nozzle type", "[Preset][Bundle]")
+{
+    DynamicPrintConfig printer, project;
+    set_receiver_layout(printer, project, {1, 1, 2, 2},
+                        {"Direct Drive Standard", "Direct Drive High Flow", "Direct Drive Standard", "Direct Drive High Flow"},
+                        {nvtStandard, nvtStandard});
+    const PublishedExtruderLayout author{h2c_ids, h2c_variants};
+
+    CHECK(resolve_published_extruder_slot(author, 2, printer, project) == -1);
+}
+
 TEST_CASE("Reloading one local bundle preserves unrelated and modified presets", "[Preset][Bundle]")
 {
     using Catch::Matchers::WithinAbs;
