@@ -93,7 +93,7 @@ Die Plugin-README beschreibt stattdessen das einfachere Setup ohne CAD-Teilung: 
 
 **Was der Fork besser machen muss:** Zusammenfassen im Slicer statt im G-Code (echte Vorschau, Zeit und Material), keine CAD-Teilung (Innenwände per Einstellung aufs Kernwerkzeug), keine leeren Werkzeugbesuche ab Erzeugung, eigene Behandlung von Schicht 1. Das sind F-16, F-36 bis F-39 und die Einstellungen weiter unten.
 
-**Für Claude Code:** `core_layer_combine.zip` (Plugin + README), `clc_cleanup.py` und `core_layer_combine_Fehleranalyse.md` liegen im Repo unter `tools/core_layer_combine/`.
+**Für Claude Code:** `core_layer_combine.zip` (Plugin + README), `clc_cleanup.py` und `core_layer_combine_Fehleranalyse.md` liegen im Repo unter `tools/core_layer_combine/`. Prime-Tower-Befunde und der gedruckte Referenz-G-Code liegen unter `tools/core_layer_combine/reference/`.
 
 ## Funktionale Anforderungen
 
@@ -141,14 +141,14 @@ Muss = Abnahmebedingung für v1, Soll = v1 wenn machbar, Kann = später. Options
 3. **Stufe 2, unteres Paar:** vom Rest die Fläche, die in A und B Kern ist → 0,4 mm, gedruckt in B. Das kostet 2 zusätzliche Werkzeugwechsel in dieser Gruppe.
 4. **Stufe 1:** alles Übrige einzeln in 0,2 mm, mit dem Hüllen-Werkzeug (F-13).
 
-Jede Stufe nutzt dieselbe Schnittmengen- und Abstandslogik wie `combine_infill()`. Flächen unter der Mindestfläche (F-18) fallen eine Stufe tiefer. Option `core_avoid_extra_toolchanges` (Soll): Stufe 2 mit unterem Paar wird stattdessen einzeln gedruckt, wenn dir Druckzeit durch Werkzeugwechsel wichtiger ist.
+Jede Stufe nutzt dieselbe Schnittmengen- und Abstandslogik wie `combine_infill()`. Flächen unter der Mindestfläche (F-18) fallen eine Stufe tiefer. Option `core_avoid_extra_toolchanges` (Soll): Stufe 2 mit unterem Paar wird stattdessen einzeln gedruckt, wenn dir Druckzeit durch Werkzeugwechsel wichtiger ist. Standard: an (siehe Volumenstrom-Befund bei F-22).
 
 **F-21 (Kann, nach v1): k\_W = 4, also 0,8-mm-Kernwände. Getrenntes 0,8-mm-Infill siehe F-24.** Die Kaskade wird verallgemeinert auf 4 → 3 → 2 → 1, Gruppen und Teilgruppen nach derselben Optimierung (F-22). 0,8 mm sind 67 % der 1,2-mm-Düse und liegen damit unter der Warnschwelle von V-02. Voraussetzung: Die max. Schichthöhe von T0 im Druckerprofil ist auf mindestens 0,8 mm gesetzt (V-01). Damit der Ausbau später klein bleibt, wird die Kaskade schon in v1 für beliebiges k programmiert und nur in der GUI auf 2–3 begrenzt.
 
 **F-22 (Muss): Gruppenbildung global optimiert.** Ziel ist, dass im ganzen Bauteil möglichst wenig Kernfläche in dünnen oder Teilschichten gedruckt wird – weder „von unten abzählen“ noch „von oben“, sondern die beste Aufteilung des Layerstapels.
 
 - **Verfahren:** dynamische Programmierung über die Layer eines Objekts. Für jede mögliche Gruppe (Startlayer, Größe 1 bis k\_max) werden Kosten berechnet, die DP wählt die Aufteilung mit den kleinsten Gesamtkosten. Das ist für diese Problemstellung exakt optimal, nicht nur eine Heuristik.
-- **Kosten einer Gruppe:** Kernfläche × Anzahl Druckdurchgänge, die sie braucht (0,6 mm = 1 Durchgang für 3 Layer, Einzellayer = 1 Durchgang je Layer), plus Strafkosten je zusätzlichem Werkzeugwechsel. Die Gewichtung wird als Experten-Option `core_toolchange_penalty` einstellbar.
+- **Kosten einer Gruppe:** Kernfläche × Anzahl Druckdurchgänge, die sie braucht (0,6 mm = 1 Durchgang für 3 Layer, Einzellayer = 1 Durchgang je Layer), plus Strafkosten je zusätzlichem Werkzeugwechsel. Die Gewichtung wird als Experten-Option `core_toolchange_penalty` einstellbar. Weil das Kern-Werkzeug volumenstrombegrenzt ist (Befund 28.10.: 17,5 mm³/s, also ~77 mm/s bei 1,2 × 0,2 mm), spart die Kombination kaum Druckzeit, sondern vor allem Werkzeugwechsel; die Wechselstrafe ist deshalb der dominierende Kostenterm.
 - **Innerhalb einer Gruppe** entscheidet dieselbe Kostenfunktion, ob B+C oder A+B als Paar Vorrang hat; bei Gleichstand das obere Paar.
 - **Aufwand:** Layeranzahl × k\_max Gruppenbewertungen mit je wenigen Polygon-Schnittmengen; NF-04 (+25 % Slicing-Zeit) gilt weiter.
 - **Grenze von v1:** Die Gruppengrenzen gelten für alle Inseln eines Objekts gleich. Getrennte Optimierung je Insel (z. B. zwei Säulen mit Top-Flächen auf verschiedenen Höhen) ist F-23 (Kann).
@@ -168,7 +168,7 @@ Jede Stufe nutzt dieselbe Schnittmengen- und Abstandslogik wie `combine_infill()
 | F-30 | Kernschicht wird im obersten Layer der Gruppe gedruckt, nach den Hüllen aller k Layer | Muss |
 | F-31 | Im obersten Layer: erst Hülle, dann Kern | Soll |
 | F-32 | Normal 2 Werkzeugwechsel je Gruppe, höchstens 4, wenn Stufe 2 mit unterem Paar vorkommt | Muss |
-| F-33 | Prime Tower und Purge funktionieren mit Gruppen (Tower wächst jede Grundschicht) | Muss |
+| F-33 | Prime Tower und Purge funktionieren mit Gruppen. Der Turm folgt der Werkzeugliste: Kern-Werkzeug nur im obersten Layer einer Gruppe, Toolchanges nur dort und im Layer danach; Layer ohne Wechsel sind Sparse-Turmschichten und dürfen gefaltet werden (`wipe_tower_sparse_layers_combination`). Zielbild und Referenz: `reference/prime-tower-optimierung-xl.md`, `reference/Testeck_CLC3_optimiert.gcode` | Muss |
 | F-34 | Kern-Werkzeug wird über die bestehende Vorheiz-/Standby-Logik rechtzeitig aufgeheizt | Soll |
 | F-35 | Funktioniert auch mit nur einem Werkzeug (z. B. 0,6er-Düse: außen 0,2, Kern 0,4) | Soll |
 | F-36 | Ein Werkzeug wird nur aufgenommen, wenn es im Layer druckt; leere Abschnitte erzeugen weder Toolwechsel noch Anfahrt, Prime/Retract oder Wipe | Muss |
@@ -293,7 +293,7 @@ Jede Änderung wird an fünf Testmodellen per G-Code-Prüfskript gecheckt, gedru
 3. Höchstens 2 Werkzeugwechsel je Gruppe, 4 bei Stufe 2 mit unterem Paar. Auf jeden Werkzeugwechsel folgt mindestens eine Extrusion dieses Werkzeugs (F-36), und die Startpunkte danach liegen nicht immer an derselben Stelle (F-50).
 4. Extrudiertes Volumen je mm passt zu Breite × Höhe (± 5 %), und die Retract-Bilanz je Werkzeug geht auf (F-38).
 5. Feature aus: Diff gegen Vanilla-Build leer (NF-01).
-6. Layerzuordnung stimmt mit der Ausgabe deines Python-Plugins überein.
+6. Layerzuordnung stimmt mit der Ausgabe deines Python-Plugins überein; mit Prime Tower Vergleich gegen `reference/Testeck_CLC3_optimiert.gcode` (gedruckt am 29.10.2026: Schichthöhen, Toolchanges, Extrusion je Werkzeug, Turmschichten).
 
 ### Druck- und Festigkeitstests
 
