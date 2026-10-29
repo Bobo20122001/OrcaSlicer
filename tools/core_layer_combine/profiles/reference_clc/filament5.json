@@ -1,0 +1,420 @@
+{
+ "type": "filament",
+ "name": "CLC Referenz Filament 5",
+ "from": "User",
+ "inherits": "",
+ "version": "2.5.0.0",
+ "activate_air_filtration": [
+  "0"
+ ],
+ "activate_air_filtration_during_print": [
+  "1"
+ ],
+ "activate_air_filtration_on_completion": [
+  "1"
+ ],
+ "activate_chamber_temp_control": [
+  "0"
+ ],
+ "adaptive_pressure_advance": [
+  "0"
+ ],
+ "adaptive_pressure_advance_bridges": [
+  "0"
+ ],
+ "adaptive_pressure_advance_model": [
+  "0,0,0\n0,0,0"
+ ],
+ "adaptive_pressure_advance_overhangs": [
+  "0"
+ ],
+ "additional_cooling_fan_speed": [
+  "70"
+ ],
+ "additional_fan_full_speed_layer": [
+  "0"
+ ],
+ "chamber_minimal_temperature": [
+  "0"
+ ],
+ "chamber_temperature": [
+  "0"
+ ],
+ "close_additional_fan_first_x_layers": [
+  "1"
+ ],
+ "close_fan_the_first_x_layers": [
+  "1"
+ ],
+ "complete_print_exhaust_fan_speed": [
+  "80"
+ ],
+ "cool_plate_temp": [
+  "35"
+ ],
+ "cool_plate_temp_initial_layer": [
+  "35"
+ ],
+ "default_filament_colour": [
+  ""
+ ],
+ "dont_slow_down_outer_wall": [
+  "0"
+ ],
+ "during_print_exhaust_fan_speed": [
+  "60"
+ ],
+ "enable_overhang_bridge_fan": [
+  "1"
+ ],
+ "enable_pressure_advance": [
+  "1"
+ ],
+ "eng_plate_temp": [
+  "0"
+ ],
+ "eng_plate_temp_initial_layer": [
+  "0"
+ ],
+ "fan_cooling_layer_time": [
+  "100"
+ ],
+ "fan_max_speed": [
+  "100"
+ ],
+ "fan_min_speed": [
+  "100"
+ ],
+ "filament_adaptive_volumetric_speed": [
+  "0"
+ ],
+ "filament_adhesiveness_category": [
+  "0"
+ ],
+ "filament_change_extrusion_role_gcode": [
+  ""
+ ],
+ "filament_change_length": [
+  "10"
+ ],
+ "filament_change_length_nc": [
+  "10"
+ ],
+ "filament_colour": [
+  "#00FF7F"
+ ],
+ "filament_cooling_before_tower": [
+  "10"
+ ],
+ "filament_cooling_final_speed": [
+  "3.5"
+ ],
+ "filament_cooling_initial_speed": [
+  "10"
+ ],
+ "filament_cooling_moves": [
+  "2"
+ ],
+ "filament_cost": [
+  "20"
+ ],
+ "filament_density": [
+  "1.24"
+ ],
+ "filament_dev_ams_drying_ams_limitations": [
+  ""
+ ],
+ "filament_dev_ams_drying_heat_distortion_temperature": [
+  "0"
+ ],
+ "filament_dev_ams_drying_temperature": [
+  "0"
+ ],
+ "filament_dev_ams_drying_time": [
+  "0"
+ ],
+ "filament_dev_chamber_drying_bed_temperature": [
+  "0"
+ ],
+ "filament_dev_chamber_drying_time": [
+  "0"
+ ],
+ "filament_dev_drying_cooling_temperature": [
+  "0"
+ ],
+ "filament_dev_drying_softening_temperature": [
+  "0"
+ ],
+ "filament_diameter": [
+  "1.75"
+ ],
+ "filament_end_gcode": [
+  "; filament end gcode \n"
+ ],
+ "filament_extruder_variant": [
+  "Direct Drive Standard"
+ ],
+ "filament_flow_ratio": [
+  "0.9765"
+ ],
+ "filament_flush_temp": [
+  "0"
+ ],
+ "filament_flush_volumetric_speed": [
+  "0"
+ ],
+ "filament_is_mixed": [
+  "0"
+ ],
+ "filament_is_support": [
+  "0"
+ ],
+ "filament_loading_speed": [
+  "10"
+ ],
+ "filament_loading_speed_start": [
+  "50"
+ ],
+ "filament_map": [
+  "1"
+ ],
+ "filament_map_2": [
+  "0"
+ ],
+ "filament_map_mode": "Auto For Flush",
+ "filament_max_volumetric_speed": [
+  "17.5"
+ ],
+ "filament_minimal_purge_on_wipe_tower": [
+  "15"
+ ],
+ "filament_mixed_components": [
+  ""
+ ],
+ "filament_mixed_gradient": [
+  "0"
+ ],
+ "filament_mixed_gradient_curve": [
+  ""
+ ],
+ "filament_mixed_gradient_per_part": [
+  "0"
+ ],
+ "filament_mixed_gradient_range": [
+  ""
+ ],
+ "filament_mixed_sublayer_ratios": [
+  ""
+ ],
+ "filament_multi_colour": [
+  "#00FF7F"
+ ],
+ "filament_multitool_ramming": [
+  "1"
+ ],
+ "filament_multitool_ramming_flow": [
+  "40"
+ ],
+ "filament_multitool_ramming_volume": [
+  "5"
+ ],
+ "filament_notes": [
+  ""
+ ],
+ "filament_nozzle_map": [
+  "4"
+ ],
+ "filament_plugin_config_overrides": "",
+ "filament_pre_cooling_temperature": [
+  "0"
+ ],
+ "filament_pre_cooling_temperature_nc": [
+  "0"
+ ],
+ "filament_preheat_temperature_delta": [
+  "0"
+ ],
+ "filament_prime_volume": [
+  "45"
+ ],
+ "filament_prime_volume_nc": [
+  "60"
+ ],
+ "filament_printable": [
+  "3"
+ ],
+ "filament_ramming_parameters": [
+  "120 100 6.6 6.8 7.2 7.6 7.9 8.2 8.7 9.4 9.9 10.0| 0.05 6.6 0.45 6.8 0.95 7.8 1.45 8.3 1.95 9.7 2.45 10 2.95 7.6 3.45 7.6 3.95 7.6 4.45 7.6 4.95 7.6"
+ ],
+ "filament_ramming_travel_time": [
+  "0"
+ ],
+ "filament_ramming_travel_time_nc": [
+  "0"
+ ],
+ "filament_ramming_volumetric_speed": [
+  "-1"
+ ],
+ "filament_ramming_volumetric_speed_nc": [
+  "-1"
+ ],
+ "filament_retract_before_wipe": [
+  "nil"
+ ],
+ "filament_retract_lift_below": [
+  "0.6"
+ ],
+ "filament_self_index": [
+  "5"
+ ],
+ "filament_shrink": [
+  "100%"
+ ],
+ "filament_shrinkage_compensation_z": [
+  "100%"
+ ],
+ "filament_soluble": [
+  "0"
+ ],
+ "filament_stamping_distance": [
+  "45"
+ ],
+ "filament_stamping_loading_speed": [
+  "29"
+ ],
+ "filament_start_gcode": [
+  "; filament start gcode\nM900 K{if nozzle_diameter[0]==0.4}0.05{elsif nozzle_diameter[0]==0.25}0.14{elsif nozzle_diameter[0]==0.3}0.07{elsif nozzle_diameter[0]==0.35}0.06{elsif nozzle_diameter[0]==0.6}0.03{elsif nozzle_diameter[0]==0.5}0.035{elsif nozzle_diameter[0]==0.8}0.015{else}0{endif} ; Filament gcode\n\n{if printer_notes=~/.*PRINTER_MODEL_XLIS.*/}\nM572 S{if nozzle_diameter[0]==0.4}0.036{elsif nozzle_diameter[0]==0.5}0.025{elsif nozzle_diameter[0]==0.6}0.02{elsif nozzle_diameter[0]==0.8}0.014{elsif nozzle_diameter[0]==0.25}0.12{elsif nozzle_diameter[0]==0.3}0.08{else}0{endif} ; Filament gcode\n{endif}\n\nM142 S36 ; set heatbreak target temp"
+ ],
+ "filament_toolchange_delay": [
+  "0"
+ ],
+ "filament_tower_interface_pre_extrusion_dist": [
+  "10"
+ ],
+ "filament_tower_interface_pre_extrusion_length": [
+  "0"
+ ],
+ "filament_tower_interface_print_temp": [
+  "-1"
+ ],
+ "filament_tower_interface_purge_volume": [
+  "20"
+ ],
+ "filament_tower_ironing_area": [
+  "4"
+ ],
+ "filament_type": [
+  "PLA"
+ ],
+ "filament_unloading_speed": [
+  "100"
+ ],
+ "filament_unloading_speed_start": [
+  "100"
+ ],
+ "filament_vendor": [
+  "Sunlu"
+ ],
+ "filament_volume_map": [
+  "0"
+ ],
+ "filament_wipe": [
+  "nil"
+ ],
+ "first_x_layer_fan_speed": [
+  "0"
+ ],
+ "full_fan_speed_layer": [
+  "2"
+ ],
+ "hot_plate_temp": [
+  "60"
+ ],
+ "hot_plate_temp_initial_layer": [
+  "60"
+ ],
+ "idle_temperature": [
+  "0"
+ ],
+ "initial_layer_fan_speed": [
+  "-1"
+ ],
+ "internal_bridge_fan_speed": [
+  "-1"
+ ],
+ "ironing_fan_speed": [
+  "-1"
+ ],
+ "long_retractions_when_ec": [
+  "0"
+ ],
+ "nozzle_temperature": [
+  "215"
+ ],
+ "nozzle_temperature_initial_layer": [
+  "215"
+ ],
+ "nozzle_temperature_range_high": [
+  "230"
+ ],
+ "nozzle_temperature_range_low": [
+  "190"
+ ],
+ "overhang_fan_speed": [
+  "100"
+ ],
+ "overhang_fan_threshold": [
+  "50%"
+ ],
+ "pellet_flow_coefficient": [
+  "0.4157"
+ ],
+ "pressure_advance": [
+  "0.036"
+ ],
+ "reduce_fan_stop_start_freq": [
+  "1"
+ ],
+ "required_nozzle_HRC": [
+  "0"
+ ],
+ "retraction_distances_when_ec": [
+  "10"
+ ],
+ "slow_down_for_layer_cooling": [
+  "1"
+ ],
+ "slow_down_layer_time": [
+  "20"
+ ],
+ "slow_down_min_speed": [
+  "15"
+ ],
+ "supertack_plate_temp": [
+  "35"
+ ],
+ "supertack_plate_temp_initial_layer": [
+  "35"
+ ],
+ "support_material_interface_fan_speed": [
+  "-1"
+ ],
+ "temperature_vitrification": [
+  "60"
+ ],
+ "textured_cool_plate_temp": [
+  "40"
+ ],
+ "textured_cool_plate_temp_initial_layer": [
+  "40"
+ ],
+ "textured_plate_temp": [
+  "45"
+ ],
+ "textured_plate_temp_initial_layer": [
+  "45"
+ ],
+ "volumetric_speed_coefficients": [
+  ""
+ ]
+}
