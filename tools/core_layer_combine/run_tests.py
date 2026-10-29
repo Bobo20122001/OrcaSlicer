@@ -39,6 +39,8 @@ def slice_model(exe, profiles, model, out_dir, datadir):
         return None, f"exit {res.returncode}: {res.stderr.strip()[-400:]}", time.time() - t0
     target = os.path.join(out_dir, model + ".gcode")
     shutil.move(produced[0], target)
+    for log in glob.glob(os.path.join(work, "*.log")):
+        shutil.move(log, os.path.join(out_dir, model + ".log"))
     shutil.rmtree(work, ignore_errors=True)
     return target, "", time.time() - t0
 

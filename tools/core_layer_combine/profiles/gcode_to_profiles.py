@@ -81,6 +81,8 @@ def unescape(s):
 
 
 def split_vector(value, typ):
+    if value == "":
+        return []
     if typ == "coStrings":
         if value.startswith('"'):
             return [unescape(i) for i in re.findall(r'"((?:[^"\\]|\\.)*)"', value)]

@@ -1,59 +1,158 @@
 # Core Layer Combine – Status
 
-Stand 27.10.2026, Branch `feature/core-layer-combine` (nur lokal, nicht gepusht).
+Stand 29.10.2026, Branch `feature/core-layer-combine`, gepusht nach `origin` (Fork Bobo20122001/OrcaSlicer).
+Auftrag: selbstständig bis alle Muss-Anforderungen nachgewiesen sind und ein portables Paket als
+GitHub-Release `v1.0-clc` vorliegt (Auftrag vom 29.10.2026, Regeln siehe unten).
 
-## Erledigt
+## Arbeitsumgebung (für Wiedereinstieg nach Kontext-Kompaktierung)
 
-| Meilenstein | Ergebnis | Commit |
+- Python: `X:\Dev\OrcaSlicer\deps\build\OrcaSlicer_dep\usr\local\libpython\python.exe -I` (kein System-Python, nichts installieren).
+  Bei Ausgaben mit Umlauten `PYTHONIOENCODING=utf-8` setzen.
+- Build: `build_win.bat -s --no-configure -j 8` in cmd nach vcvars64 (siehe CLAUDE.local.md). Nach neuen Quelldateien ohne `--no-configure`.
+- Vanilla-Vergleichsbuild: Worktree `build\vanilla` (Upstream `b7ecf1b295`), Exe `build\vanilla\build\src\Release\orca-slicer.exe`.
+- Tests:
+  - `run_tests.py --profiles profiles/reference_clc` – slict alle Testmodelle mit CLC und prüft mit `check_gcode.py`
+  - `run_tests.py --profiles profiles/nf01 --out build/clc_runs/nf01_fork --no-check` und Vanilla nach `nf01_vanilla`,
+    dann `check_gcode.py <fork> --nf01 <vanilla>` – NF-01
+  - `check_gcode.py <gcode> --compare reference/Testeck_CLC3_optimiert.gcode` – Referenzvergleich
+  - `roundtrip_3mf.py --profiles profiles/reference_clc` – F-44
+- Profile: `profiles/gcode_to_profiles.py` erzeugt flache Profile aus dem Einstellungsblock eines G-Codes.
+  `reference_clc` = Referenz-Testeck-Einstellungen + CLC (N_S = 1, N_K = 2 wie in der Referenz), `nf01` = ohne CLC,
+  Brückenbreite absolut (Vanilla lehnt 100 % bei Mischdüsen ab, siehe Entscheidung 10).
+- Fehlt im Repo: `clc_combine.py` und `xl_tower_cleanup.py` lagen nicht in Downloads. Gearbeitet wird mit der Notiz
+  `reference/prime-tower-optimierung-xl.md` und dem Referenz-G-Code.
+
+## Meilensteine
+
+| Meilenstein | Stand | Commits |
 |---|---|---|
-| Unterlagen | Lastenheft, Plugin v0.1.1, `clc_cleanup.py`, Fehleranalyse im Repo | `6ef6986e1e` |
-| M1 | Architekturvorschlag gegen den Code geprüft, Plan mit Dateien, Funktionen und IDs: [PLAN.md](PLAN.md) | `4a5fa52c6e` |
-| M2 (libslic3r) | Optionen `core_layer_combine`, `core_layer_height`, `shell_wall_loops`, `core_wall_loops` (F-01, F-02, F-03a, F-03b): Definition, Preset-Liste, Invalidierung → `posPerimeters`, Regionen-Kompatibilität (F-07) | `1cf22a1149` |
-| M2 (GUI) | Prozess → Stärke → Erweitert direkt unter „Infill combination“; Objekt-/Modifier-Liste (F-07); Unteroptionen ausgeblendet, solange der Schalter aus ist (F-08); bei aktivem Feature `wall_loops` ausgegraut und = N_S + N_K (F-03c) | `3c9cfeda96` |
+| M1 Plan | erledigt, [PLAN.md](PLAN.md) | `4a5fa52c6e` |
+| M2 Einstellungen | erledigt | `1cf22a1149`, `3c9cfeda96`, `4233a4431b` |
+| Test-Infrastruktur | erledigt | `1c3bc0b5e8` |
+| M3 Wände, Gruppen, Kern | erledigt | `b746abe4b5` |
+| M4 Infill, Reihenfolge, Werkzeuge, Validierung | weitgehend erledigt (mit M3), Turmfaltung offen | `b746abe4b5` |
+| UI-Skalierung G-01..G-07 | offen | – |
+| Turm-Leerfahrten (eigene Option, Standard aus) | offen | – |
+| Paket + Release | offen | – |
 
-Noch **keine Slicing-Logik**: Mit eingeschaltetem Feature slict Orca wie bisher, nur mit `wall_loops` = Summe.
+## Anforderungen – Nachweise
 
-## Prüfung
+Grundlage der Nachweise: `run_tests.py --profiles profiles/reference_clc` auf allen 6 Testmodellen
+(Testeck, Würfel 20, Pyramide, Halter, Zugstab 1A, Dünnwand), alle Checks 1–5 bestanden (29.10.2026).
 
-- Inkrementeller Build `build_win.bat -s --no-configure -j 8`: 0 Fehler, 13 min.
-- Exe gestartet mit eigenem Datadir `build\clc_test_datadir\data`: Hauptfenster offen, reagiert, keine Abstürze, im Log nur zwei bekannte `calc_exclude_triangles`-Meldungen. Da alle Prozess-Tabs beim Start aufgebaut werden und ein unbekannter Optionsname dort sofort scheitern würde, ist das ein indirekter Nachweis, dass die vier Zeilen angelegt sind.
-- **Nicht geprüft: Sichtprüfung der Zeilen in der GUI.** Ohne Bildschirmzugriff konnte ich nicht in Prozess → Stärke (Expertenmodus) klicken. Bitte einmal ansehen (siehe offene Fragen).
-- Prüfweg über die Kommandozeile geht nicht: Orcas CLI nimmt keine Druckoptionen als Argumente an (auch `--infill_combination` → „Invalid option“), `--help-fff` ist im Code auskommentiert.
+| ID | Prio | Stand | Nachweis |
+|---|---|---|---|
+| F-01 | Muss | ✅ | Option `core_layer_combine` in Stärke → Erweitert; Sichtprüfung offen (Für Ole) |
+| F-02 | Muss | ✅ | `core_layer_height` mm/% der Kern-Düse, k = floor(H/h); Testeck: Kern nur 0,6 mm |
+| F-03a/b | Muss | ✅ | `shell_wall_loops`, `core_wall_loops` |
+| F-03c | Muss | ✅ | `wall_loops` ausgegraut, intern N_S + N_K (Entscheidung fest vorgegeben) |
+| F-04 | Muss | ✅ | Werkzeugwahl in `region_filament()`; Check 1/2 |
+| F-05 | Muss | ✅ | dünne Flächen und Hüllenwände mit Düse des zugeordneten Filaments (`clc_flow`) |
+| F-06 | Soll | ✅ | `core_shell_overlap` (Standard 15 %) |
+| F-07 | Soll | ✅ | Optionen in Objekt-/Modifier-Liste, Regionen-Kompatibilität; Sichtprüfung offen |
+| F-08 | Soll | ✅ | Unteroptionen ausgeblendet, wenn Schalter aus |
+| F-10/F-11 | Muss | ✅ | Hülle je Layer mit N_S Wänden (Classic/Arachne), Kern = Innenkontur |
+| F-12 | Muss | ✅ | Kaskade in `Planner::cascade()`; Würfel/Halter zeigen 0,4-mm-Stufen |
+| F-13 | Muss | ✅ | Restflächen dünn mit Hüllen-Werkzeug (Check 1: Kern nie dünn) |
+| F-14 | Muss | ✅ | Kernwände + Infill mit k · h |
+| F-15 | Muss | ✅ | Schalenzonen aus Nachbar-`lslices`; Top/Bottom/Brücken dünn mit Hülle |
+| F-16 | Muss | ✅ | Layer 1 komplett Hülle (Check 1) |
+| F-17/F-22 | Muss | ✅ | DP mit Wechselstrafe; Abnahme siehe unten |
+| F-18 | Soll | ✅ | Mindestfläche = max(minimum_sparse_infill_area, (3 · Kernbreite)²) |
+| F-19 | Soll | ✅ (Code) | Fill rotiert über `thickness_layers` je Kernschicht (bestehende Orca-Logik) |
+| F-30/F-31 | Muss/Soll | ✅ | Kern zuletzt im Layer (`clc_print_core_last`), Check 2 |
+| F-32 | Muss | ✅ | Check 3: höchstens 4 TC je Gruppe; Testeck 28 TC bei 14 Gruppen |
+| F-33 | Muss | ⚠️ | Turm folgt der Werkzeugliste, TC nur an Gruppengrenzen; Sparse-Schicht zwischen den Wechseln wird nicht gefaltet (47 statt 36 Turmschichten, aber 40 % weniger Turmmaterial). Siehe offene Punkte |
+| F-36 | Muss | ✅ | Check 3: keine leeren Besuche |
+| F-37 | Muss | ✅ | keine festen Werkzeugnummern; Referenz nutzt T1, Paket T2 |
+| F-38 | Muss | ✅ | Check 4: Retract-Bilanz |
+| F-40 | Muss | ✅ | Check 4: Volumen je mm ± 5 %, `;HEIGHT` = k · h |
+| F-41 | Muss | ✅ | Check 5: Spitze 17,5 mm³/s = Grenze, keine Überschreitung |
+| F-42 | Muss | ✅ (G-Code) | `;HEIGHT:0.6` an allen Kernbahnen; Vorschau-Sichtprüfung offen (Für Ole) |
+| F-43 | Muss | ✅ | Filamentangaben im Header = Summe der Extrusionen (T0 4195 mm ↔ 10 090 mm³), Zeit 42:06 |
+| F-44 | Muss | ✅ | `roundtrip_3mf.py`: 7/7 Optionen im 3MF, G-Code nach Laden identisch |
+| F-45 | Soll | ✅ | Optionen stehen im Einstellungsblock des G-Codes; Fork-Version offen (NF-06) |
+| F-50 | Muss | ✅ (geändert) | Kernnaht wandert je Layer (Goldener Schnitt), ≥ 5 mm von der Hüllennaht; siehe Änderungsvorschlag 2 |
+| F-51 | Muss | ✅ | Validierung: zwei Werkzeuge ohne Prime Tower → Fehler |
+| V-01..V-09, V-12 | – | ✅ (Code) | `clc_validate()`; V-03/V-06 als Fehler statt Warnung (Änderungsvorschlag 3) |
+| NF-01 | Muss | ✅ | 6/6 Modelle: Fork mit Feature aus = Vanilla (0 Zeilen Abweichung außer Header/neue Optionen) |
+| NF-02 | Muss | ✅ | Logik in `CoreLayerCombine.cpp/.hpp`, Hooks in Upstream-Dateien 3–26 Zeilen |
+| G-01..G-07 | Muss | offen | – |
+| NF-05 | Muss | offen | Paket |
+| NF-08 | Muss | teilweise | Tooltips vorhanden; Kurzanleitung (LIESMICH) offen |
 
-## Probleme unterwegs
+**F-22-Abnahme** (Log `Core layer combine: ... core passes`):
 
-1. **Build-Versuch 1 abgebrochen:** `C1060 Kein verfügbarer Speicher mehr im Heap` in `Format\AMF.cpp`. Ursache: Die Änderung an `PrintConfig.hpp` erzwingt fast einen Vollbuild, und 16 parallele `cl.exe` mit vorkompiliertem Header passen nicht in 32 GB. Lösung: `-j 8`. Steht jetzt in `CLAUDE.local.md`. Log von Versuch 1: `build_slicer_try1.log`.
-2. **Smart App Control ist auf diesem PC aktiv** (`VerifiedAndReputablePolicyState = 1`). Beim ersten Start meldete das Programm `OrcaSlicer.dll was not loaded, error=4551`; das CodeIntegrity-Protokoll zeigt Blockaden für die unsignierte `TKGeomBase.dll`. Spätere Starts liefen ohne Blockade. Ich habe an der Einstellung nichts geändert (Sicherheitseinstellung). Relevant für NF-05 (portable Exe auf Lab-PCs), siehe offene Fragen.
+| Modell | DP, Strafe 0 | Raster 3 | DP, Strafe 100 (Gruppen) | Raster (Gruppen) |
+|---|---|---|---|---|
+| Halter | 28 277 mm² | 28 967 mm² | 28 277 (31) | 28 967 (30) |
+| Pyramide | 23 625 | 23 625 | 24 508 (34) | 23 625 (42) |
+| Würfel 20 | 11 479 | 11 849 | 11 479 (31) | 11 849 (30) |
+| Testeck, Zugstab, Dünnwand | gleich | gleich | gleich | gleich |
 
-## Entscheidungen (ohne Rückfrage getroffen)
+Mit Strafe 0 nie mehr Durchgänge als das Raster, beim Halter −2,4 % → Abnahme erfüllt. Mit der Standard-Strafe
+tauscht die DP bei der Pyramide 3,7 % mehr Durchgänge gegen 16 Toolchanges weniger (Gesamtkosten 31 308 < 32 025).
 
-Ausführlich mit Begründung in [PLAN.md](PLAN.md), Abschnitt 5. Kurz:
+**Referenzvergleich Testeck** (`reference_clc` gegen `Testeck_CLC3_optimiert.gcode`):
 
-1. Kernwände werden **zweistufig neu erzeugt** (Hülle je Layer mit N_S Wänden, Kernwände in `combine_core()` auf der kombinierten Fläche bei k · h), nicht aus fertigen Loops herausgeschnitten.
-2. Werkzeugtrennung Hülle/Kern über **`inset_idx`** (`is_core_wall()`), keine neue Extrusionsrolle.
-3. Top-/Bottom-Zonen für F-15 bestimmt `combine_core()` selbst aus den Nachbar-`lslices`, weil die Surface-Typen erst danach entstehen.
-4. F-03c über den **gespeicherten Wert**: `wall_loops` wird auf N_S + N_K gesetzt und bleibt beim Abschalten als normale Wandanzahl stehen.
-5. Standardwerte: `core_layer_height` 0,6 mm, `shell_wall_loops` 3, `core_wall_loops` **1**.
-6. `core_layer_height` als **mm oder %** der Kern-Düse (wie `infill_combination_max_layer_height`).
-7. Optionsnamen wie im Lastenheft vorgeschlagen; GUI-Texte englisch im Quelltext, deutsche Übersetzung (NF-07) kommt später gesammelt.
-8. Einordnung in der GUI unter Stärke → **Erweitert** neben „Infill combination“ (F-01), Sichtbarkeit nur im Expertenmodus wie die Nachbaroption.
-9. Die Referenzunterlagen in `tools/core_layer_combine/` sind mit committet, damit Plan und Code auf dieselbe Fassung verweisen.
+| | Fork | Referenz (gedruckt) | Vanilla |
+|---|---|---|---|
+| Toolchanges | **28** | 36 | 50 |
+| Kernhöhen T0 | nur 0,6 mm | 0,2 / 0,4 / 0,6 / 1,2 mm | 0,2 mm |
+| Objektvolumen T0 / T1 | 9 414 / 9 234 mm³ | 18 828 / 3 046 mm³ | 16 280 / 3 046 mm³ |
+| Turmschichten | 47 | 36 | 49 |
+| Turmvolumen | 1 981 mm³ | 3 333 mm³ | 3 326 mm³ |
+| Geschätzte Druckzeit | 42:06 | 41,9 min laut Notiz (Header veraltet: 50:06) | 48:50 |
 
-## Offene Fragen an dich
+T1 druckt mehr, weil Solid-Infill nahe Top/Bottom jetzt mit dem Hüllen-Werkzeug läuft (feste Entscheidung zu F-15).
+Die Referenz skaliert den Kernfluss pauschal (+5,5 % gegenüber dem Orca-Flowmodell) und druckt T0 auch dünn.
 
-1. **Sichtprüfung GUI:** Erscheinen die vier Zeilen unter Prozess → Stärke → Erweitert (Expertenmodus), verschwinden sie beim Ausschalten, und wird „Wall loops“ ausgegraut mit der Summe? Start: `build\src\Release\orca-slicer.exe`.
-2. **N_K-Standard:** 1 oder 2 Kernwände? Das README-Setup nutzte 2, die CAD-Variante 1–2.
-3. **Solid-Infill im Kernbereich nahe Top/Bottom (F-15):** Es bleibt dünn – aber mit welchem Werkzeug? Nach F-04 wäre es das Internal-solid-Filament, also die 1,2er-Düse mit 0,2 mm Schichthöhe. Alternative: wie F-13 mit dem Hüllen-Werkzeug. Hängt mit der offenen Entscheidung zu F-13 im Lastenheft zusammen.
-4. **Smart App Control und NF-05:** Selbst gebaute, unsignierte Exe/DLLs können auf Windows-11-PCs mit aktiver Smart App Control blockiert werden. Ist das auf dem Lab-PC eingeschaltet? Falls ja, braucht die portable Exe eine Signatur oder eine Ausnahme durch die IT.
-5. **Abschalten des Features:** Soll `wall_loops` dann auf einen früheren Wert zurückspringen? Aktuell bleibt die Summe stehen (einfach und vorhersehbar, aber ein Nutzer sieht evtl. plötzlich 4 Wände).
+## Entscheidungen
 
-## Nächste Schritte
+1. Kernwände werden zweistufig erzeugt: Hülle je Layer mit N_S Wänden, Kernwände je kombiniertem Stück neu bei k · h.
+2. Werkzeugtrennung über `inset_idx`: Kernwände `>= N_S`, Kern-Infill/-Lückenfüllung mit `CLC_CORE_FILL_TAG`.
+3. Schalenzonen (F-15) aus Nachbar-`lslices` mit max(Schichtanzahl, Dicke/h) Layern.
+4. Die Füllflächen bleiben bis nach der Surface-Klassifizierung vollständig; danach werden die unteren Layer zu
+   `stInternalVoid` (wie `combine_infill()`). Sonst macht „ensure vertical shell thickness“ den Kern massiv.
+5. Standardwerte: `core_layer_height` 0,6 mm, `shell_wall_loops` 3, `core_wall_loops` 2 (fest vorgegeben),
+   `core_shell_overlap` 15 %, `core_avoid_extra_toolchanges` an, `core_toolchange_penalty` 100 mm² (Experte).
+6. Solid-Infill im Kern nahe Top/Bottom und Restflächen: Hüllen-Werkzeug in Grundschichthöhe (fest vorgegeben).
+7. `wall_loops` wird nicht überschrieben, nur ausgegraut (fest vorgegeben).
+8. Prime Tower ist bei zwei Werkzeugen Pflicht (Validierungsfehler), erfüllt F-51.
+9. Infill combination wird für CLC-Regionen abgeschaltet (V-09), Hinweis als Warnung.
+10. Config-Prüfung der Brückenbreite in % bei Mischdüsen korrigiert (Upstream-Fehler: 100 % war nie gültig);
+    `Print::validate()` prüft ohnehin je Werkzeug gegen dessen Düse. Kein Einfluss auf G-Code (NF-01 bestätigt).
+11. F-50 als Seam-Versatz der Kernwände in `GCode::extrude_loop` (Goldener Schnitt über die Layer-ID, ≥ 5 mm).
 
-1. Deine Sichtprüfung der GUI (Frage 1), danach ggf. Korrekturen an Platzierung oder Texten.
-2. **M3 – Wände** nach [PLAN.md](PLAN.md), Abschnitt 3:
-   - `src/libslic3r/CoreLayerCombine.hpp/.cpp` anlegen und in `src/libslic3r/CMakeLists.txt` eintragen (braucht einmal CMake-Konfiguration, also `build_win.bat -s -j 8` ohne `--no-configure`).
-   - `LayerRegion::make_perimeters()`: Hülle mit N_S Wänden und Hüllen-Flow (Düse des Outer-wall-Filaments).
-   - `combine_core()` mit Schalenzonen, DP (F-22) und Kaskade (F-12), Kernwände bei k · h.
-   - `is_core_wall()` an den 3 Stellen in `GCode.cpp` und `GCode/ToolOrdering.cpp`.
-3. `tools/core_layer_combine/check_gcode.py` für die automatischen G-Code-Checks aus dem Testplan, dazu ein XL-5T-Testprofil mit 1,2-mm-T0 (gibt es in den Prusa-Profilen nicht).
-4. Deutsche Übersetzung der vier Optionen (NF-07) und Tooltips gegen NF-08 prüfen.
+## Änderungsvorschläge Lastenheft
+
+1. **F-33 (umgesetzt mit Zustimmung vom 29.10.):** Turm folgt der Werkzeugliste statt „wächst jede Grundschicht“.
+2. **F-50:** Wandern der Startpunkte nur für das Kern-Werkzeug fordern. Die Hülle behält die Naht-Einstellung des
+   Nutzers (sichtbare Oberfläche); ihr Start nach dem Wechsel liegt hinter der Reinigung auf dem Prime Tower, der
+   mit F-51 Pflicht ist – die Kleckse aus dem zweiten Testdruck entstanden ohne Turm. Abstand Kern ↔ Hülle ≥ 5 mm
+   bleibt gefordert und ist umgesetzt.
+3. **V-03 und V-06 als Fehler statt „Warnung, Feature inaktiv“:** Ein stilles Abschalten pro Objekt würde die
+   Werkzeugzuordnung (Hülle/Kern) inkonsistent machen; ein klarer Fehler mit Hinweis ist für Lab-Nutzer eindeutiger.
+4. **F-22-Abnahme:** „nie mehr Kernflächen-Durchgänge als das Raster“ gilt für `core_toolchange_penalty = 0`.
+   Mit Strafe > 0 ist der Maßstab die Gesamtkostenfunktion aus F-22 (Durchgänge + Wechselstrafe); dort ist die DP
+   nie schlechter als das Raster (nachgewiesen auf allen 6 Modellen).
+
+## Blocker
+
+– keine –
+
+## Offene Punkte / nächste Schritte
+
+1. F-33 Turmfaltung: Sparse-Turmschicht zwischen zwei Wechselschichten in die folgende Kern-Wechselschicht falten
+   (wie Prototyp: T0-Turmschicht 0,4 mm). Orcas `wipe_tower_sparse_layers_combination` faltet nie in Wechselschichten.
+2. Turm-Leerfahrt-Optimierungen als eigene Option, Standard aus (Notiz-Tabelle; Skript liegt nicht vor).
+3. G-01..G-07 UI-Skalierung (`GUI_Utils.cpp` `get_dpi_for_window()`, Preferences, Computername im Schlüssel).
+4. Paketprofile „Prusa XL 5T CLC“ (T0 1,2 / T2 0,4), „0.2mm CLC“, PLA; ohne Einrichtungsassistent.
+5. NF-06 Fork-Kennung, NF-07 deutsche Übersetzung, NF-08 LIESMICH, Testdrucke (testprints/ mit README).
+6. Paket bauen (`build_win.bat -s -i -j 8`), testen, Release `v1.0-clc` (Pre-Release).
+
+## Für Ole zu prüfen
+
+1. GUI: Prozess → Stärke → Erweitert (Expertenmodus): 7 CLC-Zeilen, ausgeblendet bei Schalter aus, „Wall loops“ ausgegraut bei Schalter an.
+2. Vorschau nach dem Slicen (F-42): Ansicht „Schichthöhe“ zeigt Kernbahnen mit 0,6 mm, Ansicht „Werkzeug“ Kern = T0.
+3. Objekt-/Modifier-Einstellungen: CLC-Optionen über „Einstellung hinzufügen → Stärke“ verfügbar (F-07).

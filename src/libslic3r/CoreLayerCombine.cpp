@@ -134,6 +134,8 @@ struct Planner
     float                   opening;           // scaled
     double                  toolchange_penalty; // mm^2 of core pass area per tool change
     bool                    avoid_extra_toolchanges;
+    // Core area times passes of the last cascade, without the tool change penalty (F-22 acceptance log).
+    mutable double          last_passes = 0.;
 
     // Cascade of one group [s, e] (F-12): the largest windows first, windows ending in the top layer before
     // lower ones. Returns the pieces and the cost of the group (F-22).
@@ -175,6 +177,7 @@ struct Planner
         }
         for (size_t j = s; j <= e; ++j)
             cost += area_mm2(diff_ex(combinable[j], assigned[j - s]));
+        last_passes = cost;
         cost += toolchange_penalty * 2. * double(tops.size());
         if (pieces != nullptr)
             *pieces = std::move(out);
@@ -343,15 +346,42 @@ void clc_combine_core(PrintObject &object)
         }
 
         std::vector<Piece> pieces;
+        double             passes = 0.;
+        size_t             groups = 0;
         for (size_t e = n; e > 0;) {
             const size_t m = size[e];
             if (m >= 2) {
                 std::vector<Piece> group;
                 planner.cascade(e - m, e - 1, &group);
+                passes += planner.last_passes;
+                groups += group.empty() ? 0 : 1;
                 append(pieces, std::move(group));
-            }
+            } else
+                passes += area_mm2(planner.combinable[e - 1]);
             e -= m;
         }
+        // F-22 acceptance: core passes of the same cascade on a fixed grid of k_max layers from the second layer.
+        double grid_passes = area_mm2(planner.combinable[0]);
+        size_t grid_groups = 0;
+        for (size_t s = 1; s < n; s += k_max) {
+            const size_t e  = std::min(n - 1, s + k_max - 1);
+            bool         ok = e > s;
+            for (size_t j = s; j <= e && ok; ++j)
+                ok = planner.eligible[j];
+            std::vector<Piece> group;
+            if (ok) {
+                planner.cascade(s, e, &group);
+                grid_passes += planner.last_passes;
+                grid_groups += group.empty() ? 0 : 1;
+            } else
+                for (size_t j = s; j <= e; ++j)
+                    grid_passes += area_mm2(planner.combinable[j]);
+        }
+        BOOST_LOG_TRIVIAL(warning) << "Core layer combine: object " << object.model_object()->name << ", region " << region_id
+                                   << ": " << groups << " groups, core passes " << passes << " mm2, total cost "
+                                   << passes + 2. * planner.toolchange_penalty * groups << " (fixed grid of " << k_max << ": "
+                                   << grid_groups << " groups, core passes " << grid_passes << " mm2, total cost "
+                                   << grid_passes + 2. * planner.toolchange_penalty * grid_groups << ")";
 
         // Grow the pieces into the shell by core_shell_overlap (F-06), but never beyond the core of their layers.
         const float overlap = float(core_width * config.core_shell_overlap.value * 0.01);

@@ -64,6 +64,7 @@ def parse(path):
     x = y = z = 0.0
     relative_e = True
     wipe = False
+    feed = 0.0
     in_cfg = False
     with open(path, encoding="utf-8", errors="replace") as f:
         for no, raw in enumerate(f):
@@ -120,6 +121,8 @@ def parse(path):
                 continue
             if code[:2] in ("G0", "G1", "G2", "G3") and (len(code) == 2 or code[2] == " "):
                 d = dict((k, float(v)) for k, v in WORD.findall(code[2:]))
+                if "F" in d:
+                    feed = d["F"]
                 if "Z" in d:
                     z = d["Z"]
                 if "X" in d or "Y" in d or "E" in d:
@@ -128,7 +131,7 @@ def parse(path):
                     mv.x0, mv.y0 = x, y
                     mv.x1, mv.y1 = d.get("X", x), d.get("Y", y)
                     mv.e = d.get("E", 0.0)
-                    mv.f = d.get("F", 0.0)
+                    mv.f = feed
                     mv.w, mv.h = w, h
                     mv.arc = None
                     if code[:2] in ("G2", "G3") and ("I" in d or "J" in d):
@@ -304,6 +307,22 @@ def run_checks(path, show_ok=True):
     report(4, "Volumen je mm konsistent (± 5 % je Rolle), Retract-Bilanz", not out_of_band and not bad_retract,
            f"Flussverhältnis je Rolle: {flow_ratio}; Ausreißer-Rollen: {list(out_of_band)}; "
            f"Druckbeginn nicht voll gefördert: {len(bad_retract)} {bad_retract[:5]}")
+
+    # 5 Volumenstrom der Kernextrusionen (F-41)
+    max_vol = vec(cfg, "filament_max_volumetric_speed")
+    limit = max_vol[core_tool] if core_tool < len(max_vol) else 0.
+    too_fast = []
+    peak = 0.
+    for mv in obj:
+        L = seg_len(mv)
+        if mv.tool != core_tool or L < 0.5 or mv.f <= 0:
+            continue
+        rate = mv.e * math.pi * (fil_d[mv.tool] / 2) ** 2 / (L / (mv.f / 60.))
+        peak = max(peak, rate)
+        if limit > 0 and rate > limit * 1.02:
+            too_fast.append((mv.layer + 1, mv.feature, round(rate, 1)))
+    report(5, "Volumenstrom des Kern-Werkzeugs <= Filamentgrenze", not too_fast,
+           f"Grenze {limit} mm³/s, Spitze {peak:.1f} mm³/s, Überschreitungen: {len(too_fast)} {too_fast[:5]}")
 
     stats["checks"] = results
     return stats
