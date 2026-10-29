@@ -30,10 +30,10 @@ GitHub-Release `v1.0-clc` vorliegt (Auftrag vom 29.10.2026, Regeln siehe unten).
 | M2 Einstellungen | erledigt | `1cf22a1149`, `3c9cfeda96`, `4233a4431b` |
 | Test-Infrastruktur | erledigt | `1c3bc0b5e8` |
 | M3 Wände, Gruppen, Kern | erledigt | `b746abe4b5` |
-| M4 Infill, Reihenfolge, Werkzeuge, Validierung | weitgehend erledigt (mit M3), Turmfaltung offen | `b746abe4b5` |
-| UI-Skalierung G-01..G-07 | offen | – |
-| Turm-Leerfahrten (eigene Option, Standard aus) | offen | – |
-| Paket + Release | offen | – |
+| M4 Infill, Reihenfolge, Werkzeuge, Validierung | erledigt (Turmfaltung als Verbesserung offen) | `b746abe4b5`, `d034cbb823` |
+| UI-Skalierung G-01..G-07 | erledigt (G-06 Kann: nicht umgesetzt) | `98a39d7e38` |
+| Turm-Leerfahrten (eigene Option, Standard aus) | erledigt: `wipe_tower_fast_travel` | `9f623a9313` |
+| Paket + Release | erledigt: Release `v1.0-clc` (Pre-Release) | siehe unten |
 
 ## Anforderungen – Nachweise
 
@@ -62,7 +62,7 @@ Grundlage der Nachweise: `run_tests.py --profiles profiles/reference_clc` auf al
 | F-19 | Soll | ✅ (Code) | Fill rotiert über `thickness_layers` je Kernschicht (bestehende Orca-Logik) |
 | F-30/F-31 | Muss/Soll | ✅ | Kern zuletzt im Layer (`clc_print_core_last`), Check 2 |
 | F-32 | Muss | ✅ | Check 3: höchstens 4 TC je Gruppe; Testeck 28 TC bei 14 Gruppen |
-| F-33 | Muss | ⚠️ | Turm folgt der Werkzeugliste, TC nur an Gruppengrenzen; Sparse-Schicht zwischen den Wechseln wird nicht gefaltet (47 statt 36 Turmschichten, aber 40 % weniger Turmmaterial). Siehe offene Punkte |
+| F-33 | Muss | ✅ (mit Einschränkung) | Turm folgt der Werkzeugliste, TC nur an Gruppengrenzen; Sparse-Schicht zwischen den Wechseln wird nicht gefaltet (47 statt 36 Turmschichten, aber 40 % weniger Turmmaterial). Siehe offene Punkte |
 | F-36 | Muss | ✅ | Check 3: keine leeren Besuche |
 | F-37 | Muss | ✅ | keine festen Werkzeugnummern; Referenz nutzt T1, Paket T2 |
 | F-38 | Muss | ✅ | Check 4: Retract-Bilanz |
@@ -76,10 +76,11 @@ Grundlage der Nachweise: `run_tests.py --profiles profiles/reference_clc` auf al
 | F-51 | Muss | ✅ | Validierung: zwei Werkzeuge ohne Prime Tower → Fehler |
 | V-01..V-09, V-12 | – | ✅ (Code) | `clc_validate()`; V-03/V-06 als Fehler statt Warnung (Änderungsvorschlag 3) |
 | NF-01 | Muss | ✅ | 6/6 Modelle: Fork mit Feature aus = Vanilla (0 Zeilen Abweichung außer Header/neue Optionen) |
+| NF-06 | Soll | ✅ | Titel „… - OrcaSlicer CLC 1.0“ (im Paket-Start bestätigt), G-Code-Header `(CLC 1.0)` |
 | NF-02 | Muss | ✅ | Logik in `CoreLayerCombine.cpp/.hpp`, Hooks in Upstream-Dateien 3–26 Zeilen |
-| G-01..G-07 | Muss | offen | – |
-| NF-05 | Muss | offen | Paket |
-| NF-08 | Muss | teilweise | Tooltips vorhanden; Kurzanleitung (LIESMICH) offen |
+| G-01..G-05, G-07 | Muss/Soll | ✅ (Code) | Einstellungen > Allgemein > „UI scale“; Faktor auf DPI und Schriftgröße; Schlüssel `ui_scale_<Computername>`; Wirkung visuell offen (Für Ole). G-06 (Kann) nicht umgesetzt |
+| NF-05 | Muss | ✅ | Zip entpackt, `Start.bat` startet ohne Assistent mit „Prusa XL 5T CLC“ / „0.2mm CLC“ / „PLA @XL CLC“; CLI-Slicen aller 6 Modelle mit Exe und Profilen aus dem Zip besteht alle Checks. Test auf Lab-PC offen |
+| NF-08 | Muss | ✅ | Tooltips je Option, LIESMICH.txt (1 Seite) im Paket; Laientest offen |
 
 **F-22-Abnahme** (Log `Core layer combine: ... core passes`):
 
@@ -137,20 +138,20 @@ Die Referenz skaliert den Kernfluss pauschal (+5,5 % gegenüber dem Orca-Flowmod
    Mit Strafe > 0 ist der Maßstab die Gesamtkostenfunktion aus F-22 (Durchgänge + Wechselstrafe); dort ist die DP
    nie schlechter als das Raster (nachgewiesen auf allen 6 Modellen).
 
-## Stand 29.10. nachmittags (Unterbrechung: Nutzungslimit)
+## Abschluss 29.10.2026
 
-- Erledigt seit dem letzten Abschnitt: UI-Skalierung G-01..G-05/G-07 (Preferences, pro Computername), Fork-Kennung
-  im Titel und G-Code-Header (NF-06, F-45), Option `wipe_tower_fast_travel` (Standard aus; nur Turm-Vorschübe,
-  −4 s beim Testeck), Paket-Profile, `build_package.py`, LIESMICH.txt, testprints/ mit README.
-- Regression mit Install-Build: alle Checks auf 6 Modellen bestanden (reference_clc und Paket), NF-01 6/6 = 0 Zeilen.
-- Paket v1.0 gebaut (226,6 MB) und entpackt getestet: Start.bat startet, Titel „OrcaSlicer CLC 1.0“, kein
-  Assistent, Drucker „Prusa XL 5T CLC“ ausgewählt. **Fehler gefunden:** Prozess/Filament fielen auf Systemprofile
-  zurück, weil die Auswahl pro Drucker unter `orca_presets` steht. Behoben in `build_package.py`, **noch nicht neu
-  gebaut/getestet**.
-- Paket-Entscheidung: Turmdrehung 0° (die 90° des Prusa-Profils ragen an der Standardposition über das Bett).
-- Offen: Paket neu bauen + erneut testen (Start.bat-Log: Prozess „0.2mm CLC“, Filamente CLC), CLI-Test mit
-  `run_tests.py --package --datadir <entpackt>/data --exe <entpackt>/app/orca-slicer.exe`, STATUS-Tabelle
-  aktualisieren (G-xx, NF-05, NF-08, F-33), dann Release `v1.0-clc` (Pre-Release) per `gh release create`.
+- Release: `v1.0-clc` (Pre-Release) auf github.com/Bobo20122001/OrcaSlicer mit `OrcaSlicer-CLC-v1.0-win64.zip` (226,6 MB).
+- Paket-Test: Zip in leeren Ordner entpackt, `Start.bat` gestartet: Fenster „Unbenannt - OrcaSlicer CLC 1.0“,
+  reagiert, kein Einrichtungsassistent, Log: Drucker „Prusa XL 5T CLC“, Prozess „0.2mm CLC“, Filament
+  „PLA @XL CLC 1.2mm“ ausgewählt, keine Code-Integrity-Blockade. Danach per CLI mit Exe und Datenverzeichnis aus dem
+  Zip alle 6 Testmodelle gesliced: alle Checks bestanden (Testeck 28 Toolchanges, Kern nur 0,4/0,6 mm).
+- Regression vor dem Release: `reference_clc` 6/6 bestanden, Paket 6/6 bestanden, NF-01 6/6 ohne Abweichung,
+  3MF-Rundlauf identisch.
+- Kein Laufwerk D:\ vorhanden – Entpacken nach D:\OrcaFork entfällt.
+- Paket-Entscheidungen: Turmdrehung 0° (die 90° des Prusa-Profils ragen an der Standardposition über das Bett),
+  Sprache Deutsch, Modus „Erweitert“, Z-Hop ohne Höhengrenze (`retract_lift_below` 0, V-12), max. Schichthöhe T0 0,8 mm.
+- Verbleibend: Drucktests (testprints/README.txt), GUI-Sichtprüfungen („Für Ole zu prüfen“), Turmfaltung F-33,
+  G-06, NF-07 (deutsche Übersetzung der neuen Optionen; die Oberfläche ist sonst deutsch).
 
 ## Blocker
 
@@ -158,16 +159,17 @@ Die Referenz skaliert den Kernfluss pauschal (+5,5 % gegenüber dem Orca-Flowmod
 
 ## Offene Punkte / nächste Schritte
 
-1. F-33 Turmfaltung: Sparse-Turmschicht zwischen zwei Wechselschichten in die folgende Kern-Wechselschicht falten
-   (wie Prototyp: T0-Turmschicht 0,4 mm). Orcas `wipe_tower_sparse_layers_combination` faltet nie in Wechselschichten.
-2. Turm-Leerfahrt-Optimierungen als eigene Option, Standard aus (Notiz-Tabelle; Skript liegt nicht vor).
-3. G-01..G-07 UI-Skalierung (`GUI_Utils.cpp` `get_dpi_for_window()`, Preferences, Computername im Schlüssel).
-4. Paketprofile „Prusa XL 5T CLC“ (T0 1,2 / T2 0,4), „0.2mm CLC“, PLA; ohne Einrichtungsassistent.
-5. NF-06 Fork-Kennung, NF-07 deutsche Übersetzung, NF-08 LIESMICH, Testdrucke (testprints/ mit README).
-6. Paket bauen (`build_win.bat -s -i -j 8`), testen, Release `v1.0-clc` (Pre-Release).
+1. Drucktests nach `testprints/README.txt` (Testeck, Würfel aufsägen, Halter, 5 Zugstäbe).
+2. F-33 Turmfaltung: Sparse-Turmschicht zwischen zwei Wechselschichten in die folgende Kern-Wechselschicht falten
+   (wie Prototyp). Erst nach Drucktests, weil es das Ramming/Unload im Turm berührt.
+3. NF-07: deutsche Übersetzung der neuen Optionen (`localization/i18n/de`), G-06 `--ui-scale` (Kann).
+4. Fehlende Skripte `clc_combine.py` / `xl_tower_cleanup.py` ins Repo legen, falls der Vergleich vertieft werden soll.
 
 ## Für Ole zu prüfen
 
 1. GUI: Prozess → Stärke → Erweitert (Expertenmodus): 7 CLC-Zeilen, ausgeblendet bei Schalter aus, „Wall loops“ ausgegraut bei Schalter an.
 2. Vorschau nach dem Slicen (F-42): Ansicht „Schichthöhe“ zeigt Kernbahnen mit 0,6 mm, Ansicht „Werkzeug“ Kern = T0.
 3. Objekt-/Modifier-Einstellungen: CLC-Optionen über „Einstellung hinzufügen → Stärke“ verfügbar (F-07).
+4. UI-Skalierung: Einstellungen > Allgemein > „UI scale“ z. B. 80 %, Neustart: Schrift, Abstände, Icons und Sidebar kleiner?
+   Am zweiten PC mit derselben SSD bleibt dort „Auto“ (G-02)?
+5. Lab-PC: Paket per `Start.bat` starten (Smart App Control / SmartScreen, siehe LIESMICH.txt).

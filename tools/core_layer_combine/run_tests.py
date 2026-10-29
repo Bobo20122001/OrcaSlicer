@@ -62,11 +62,13 @@ def flat_profiles(profiles):
 def package_profiles(datadir):
     text = open(os.path.join(datadir, "OrcaSlicer.conf"), encoding="utf-8").read()
     conf = json.loads(text[:text.rfind("#")])
-    presets = conf["presets"]
+    machine = conf["presets"]["machine"]
+    # The selections per printer, as the GUI stores them after its first start.
+    entry = next(e for e in conf["orca_presets"] if e["machine"] == machine)
+    names = [entry["filament"]] + [entry[k] for k in sorted(entry) if k.startswith("filament_") and k[9:].isdigit()]
     user = os.path.join(datadir, "user", "default")
-    settings = [os.path.join(user, "machine", presets["machine"] + ".json"),
-                os.path.join(user, "process", presets["print"] + ".json")]
-    fils = [os.path.join(user, "filament", name + ".json") for name in presets["filaments"]]
+    settings = [os.path.join(user, "machine", machine + ".json"), os.path.join(user, "process", entry["process"] + ".json")]
+    fils = [os.path.join(user, "filament", name + ".json") for name in names]
     return settings, fils
 
 
