@@ -4910,7 +4910,7 @@ void PrintConfigDef::init_fff_params()
     def->min = 0;
     def->max = 1000;
     def->mode = comAdvanced;
-    def->set_default_value(new ConfigOptionInt(1));
+    def->set_default_value(new ConfigOptionInt(2));
 
     // BBS
     def          = this->add("enable_wrapping_detection", coBool);
