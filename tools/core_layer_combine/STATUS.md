@@ -137,6 +137,21 @@ Die Referenz skaliert den Kernfluss pauschal (+5,5 % gegenüber dem Orca-Flowmod
    Mit Strafe > 0 ist der Maßstab die Gesamtkostenfunktion aus F-22 (Durchgänge + Wechselstrafe); dort ist die DP
    nie schlechter als das Raster (nachgewiesen auf allen 6 Modellen).
 
+## Stand 29.10. nachmittags (Unterbrechung: Nutzungslimit)
+
+- Erledigt seit dem letzten Abschnitt: UI-Skalierung G-01..G-05/G-07 (Preferences, pro Computername), Fork-Kennung
+  im Titel und G-Code-Header (NF-06, F-45), Option `wipe_tower_fast_travel` (Standard aus; nur Turm-Vorschübe,
+  −4 s beim Testeck), Paket-Profile, `build_package.py`, LIESMICH.txt, testprints/ mit README.
+- Regression mit Install-Build: alle Checks auf 6 Modellen bestanden (reference_clc und Paket), NF-01 6/6 = 0 Zeilen.
+- Paket v1.0 gebaut (226,6 MB) und entpackt getestet: Start.bat startet, Titel „OrcaSlicer CLC 1.0“, kein
+  Assistent, Drucker „Prusa XL 5T CLC“ ausgewählt. **Fehler gefunden:** Prozess/Filament fielen auf Systemprofile
+  zurück, weil die Auswahl pro Drucker unter `orca_presets` steht. Behoben in `build_package.py`, **noch nicht neu
+  gebaut/getestet**.
+- Paket-Entscheidung: Turmdrehung 0° (die 90° des Prusa-Profils ragen an der Standardposition über das Bett).
+- Offen: Paket neu bauen + erneut testen (Start.bat-Log: Prozess „0.2mm CLC“, Filamente CLC), CLI-Test mit
+  `run_tests.py --package --datadir <entpackt>/data --exe <entpackt>/app/orca-slicer.exe`, STATUS-Tabelle
+  aktualisieren (G-xx, NF-05, NF-08, F-33), dann Release `v1.0-clc` (Pre-Release) per `gh release create`.
+
 ## Blocker
 
 – keine –

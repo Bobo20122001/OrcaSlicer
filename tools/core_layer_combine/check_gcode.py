@@ -28,7 +28,7 @@ TOOL = re.compile(r"^T(\d+)(?=\s|;|$)")
 TOWER = {"Prime tower", "Wipe tower"}
 NEW_KEYS = ("core_layer_combine", "core_layer_height", "shell_wall_loops", "core_wall_loops",
             "core_toolchange_penalty", "core_avoid_extra_toolchanges", "core_shell_overlap",
-            "core_min_area", "wipe_tower_skip_idle_moves", "ui_scale")
+            "core_min_area", "wipe_tower_fast_travel", "ui_scale")
 
 
 def mm3_per_mm(w, h):

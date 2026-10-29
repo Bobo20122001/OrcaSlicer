@@ -506,10 +506,21 @@ public:
 
 	// Travel to a new XY position. f=0 means use the current value.
 	WipeTowerWriter2& travel(float x, float y, float f = 0.f)
-		{ return extrude_explicit(x, y, 0.f, f); }
+	{
+		// Orca CLC: with wipe_tower_fast_travel a travel without its own speed runs at the travel speed,
+		// and the speed of the following extrusions is restored right after it.
+		if (f == 0.f && m_fast_travel > 0.f && m_current_feedrate > 0.f && m_current_feedrate != m_fast_travel) {
+			const float extrusion_feedrate = m_current_feedrate;
+			extrude_explicit(x, y, 0.f, m_fast_travel);
+			return feedrate(extrusion_feedrate);
+		}
+		return extrude_explicit(x, y, 0.f, f);
+	}
 
-	WipeTowerWriter2& travel(const Vec2f &dest, float f = 0.f) 
-		{ return extrude_explicit(dest.x(), dest.y(), 0.f, f); }
+	WipeTowerWriter2& travel(const Vec2f &dest, float f = 0.f)
+		{ return travel(dest.x(), dest.y(), f); }
+
+	WipeTowerWriter2& set_fast_travel(float f) { m_fast_travel = f; return *this; }
 
 	// Extrude a line from current position to x, y with the extrusion amount given by m_extrusion_flow.
 	WipeTowerWriter2& extrude(float x, float y, float f = 0.f)
@@ -934,6 +945,7 @@ private:
     std::vector<Vec2f>  m_wipe_path;
 	float    	  m_current_z;
 	float 	  	  m_current_feedrate;
+	float         m_fast_travel = 0.f; // Orca CLC: travel feedrate on the tower, 0 = keep the current one
     size_t        m_current_tool;
 	float 		  m_layer_height;
 	float 	  	  m_extrusion_flow;
@@ -1058,6 +1070,7 @@ WipeTower2::WipeTower2(const PrintConfig& config, const PrintRegionConfig& defau
     m_sparse_layers_combined(wipe_tower_sparse_layers_combined(config)),
     m_gcode_flavor(config.gcode_flavor),
     m_travel_speed(config.travel_speed.get_at(get_extruder_index(config, (unsigned int)initial_tool))),
+    m_fast_travel(config.wipe_tower_fast_travel.value ? 60.f * float(config.travel_speed.get_at(get_extruder_index(config, (unsigned int)initial_tool))) : 0.f),
     m_infill_speed(default_region_config.sparse_infill_speed.get_at(get_extruder_index(config, (unsigned int)initial_tool))),
     m_perimeter_speed(default_region_config.inner_wall_speed.get_at(get_extruder_index(config, (unsigned int)initial_tool))),
     m_current_tool(initial_tool),
@@ -1260,6 +1273,7 @@ std::vector<WipeTower::ToolChangeResult> WipeTower2::prime(
         size_t old_tool = m_current_tool;
 
         WipeTowerWriter2 writer(m_layer_height, m_perimeter_width, m_gcode_flavor, m_filpar, m_enable_arc_fitting);
+        writer.set_fast_travel(m_fast_travel);
         writer.set_extrusion_flow(m_extrusion_flow)
               .set_z(m_z_pos)
               .set_initial_tool(m_current_tool);
@@ -1364,6 +1378,7 @@ WipeTower::ToolChangeResult WipeTower2::tool_change(size_t tool)
                                     : m_wipe_tower_depth-m_perimeter_width));
 
 	WipeTowerWriter2 writer(m_layer_height, m_perimeter_width, m_gcode_flavor, m_filpar, m_enable_arc_fitting);
+	writer.set_fast_travel(m_fast_travel);
 	writer.set_extrusion_flow(m_extrusion_flow)
 		.set_z(m_z_pos)
 		.set_initial_tool(m_current_tool)
@@ -1995,6 +2010,7 @@ WipeTower::ToolChangeResult WipeTower2::finish_layer()
     size_t old_tool = m_current_tool;
 
 	WipeTowerWriter2 writer(m_layer_height, m_perimeter_width, m_gcode_flavor, m_filpar, m_enable_arc_fitting);
+	writer.set_fast_travel(m_fast_travel);
 	writer.set_extrusion_flow(m_extrusion_flow)
 		.set_z(m_z_pos)
 		.set_initial_tool(m_current_tool)

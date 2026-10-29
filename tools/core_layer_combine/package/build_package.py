@@ -38,6 +38,9 @@ def write_app_config(data_dir, machine, process, filaments, version):
         "models": [{"vendor": "Prusa", "model": "Prusa XL 5T", "nozzle_diameter": "0.4"}],
         "filaments": ["Generic PLA @Prusa XL"],
         "presets": {"machine": machine, "print": process, "filaments": filaments},
+        # Process and filaments are remembered per printer (PresetBundle::load_selections()).
+        "orca_presets": [dict({"machine": machine, "process": process, "filament": filaments[0]},
+                              **{f"filament_{i:02d}": name for i, name in enumerate(filaments[1:], 1)})],
     }
     text = json.dumps(conf, indent=4, ensure_ascii=False) + "\n"
     # Same checksum line as AppConfig::save(), so Orca reads the file as untouched.

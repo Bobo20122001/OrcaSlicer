@@ -7290,6 +7290,13 @@ void PrintConfigDef::init_fff_params()
     def->mode = comAdvanced;
     def->set_default_value(new ConfigOptionBool(false));
 
+    def = this->add("wipe_tower_fast_travel", coBool);
+    def->label = L("Fast travel on the prime tower");
+    def->tooltip = L("Travel moves on a Type 2 prime tower use the travel speed instead of the speed of the last extrusion. "
+                     "Shortens tool changes on tool changer printers.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(false));
+
     def = this->add("single_extruder_multi_material_priming", coBool);
     def->label = L("Prime all printing extruders");
     def->tooltip = L("If enabled, all printing extruders will be primed at the front edge of the print bed at the start of the print.");

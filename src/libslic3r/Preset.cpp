@@ -1320,7 +1320,7 @@ static std::vector<std::string> s_Preset_print_options{
     "enable_tower_interface_features",
     "enable_tower_interface_cooldown_during_tower",
     "wipe_tower_no_sparse_layers",
-    "wipe_tower_sparse_layers_combination",
+    "wipe_tower_sparse_layers_combination", "wipe_tower_fast_travel",
     "compatible_printers",
     "compatible_printers_condition",
     "inherits",
