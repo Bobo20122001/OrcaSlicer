@@ -20,6 +20,9 @@ class PrintObject;
 class PrintRegionConfig;
 struct StringObjectException;
 
+// Version of the core layer combine fork, shown in the window title and the G-code header (NF-06, F-45).
+constexpr const char *CLC_VERSION = "1.0";
+
 // inset_idx of core infill and core gap fill. Core walls carry their wall index shifted by the shell wall
 // count instead, so everything at or above shell_wall_loops belongs to the core.
 constexpr int CLC_CORE_FILL_TAG = 1 << 24;

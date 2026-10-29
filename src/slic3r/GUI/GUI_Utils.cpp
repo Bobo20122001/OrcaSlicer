@@ -4,6 +4,8 @@
 #include "I18N.hpp"
 
 #include <algorithm>
+#include <cctype>
+#include <cmath>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/format.hpp>
@@ -231,7 +233,8 @@ void open_ms_store_product_page()
 }
 
 // If called with nullptr, a DPI for the primary monitor is returned.
-int get_dpi_for_window(const wxWindow *window)
+// Orca CLC: the system DPI, before the user UI scale is applied.
+static int system_dpi_for_window(const wxWindow *window)
 {
 #ifdef _WIN32
     enum MONITOR_DPI_TYPE_ {
@@ -282,6 +285,26 @@ int get_dpi_for_window(const wxWindow *window)
     // TODO
     return DPI_DEFAULT;
 #endif
+}
+
+static double s_ui_scale = 1.;
+
+void set_ui_scale(double factor) { s_ui_scale = factor > 0. ? factor : 1.; }
+double get_ui_scale() { return s_ui_scale; }
+
+std::string ui_scale_config_key()
+{
+    std::string host = into_u8(wxGetHostName());
+    for (char &c : host)
+        if (!std::isalnum(static_cast<unsigned char>(c)))
+            c = '_';
+    return "ui_scale_" + (host.empty() ? std::string("default") : host);
+}
+
+int get_dpi_for_window(const wxWindow *window)
+{
+    // Orca CLC: the user UI scale multiplies the system DPI, so fonts, spacings and icons follow it (G-01, G-03).
+    return std::max(1, int(std::lround(system_dpi_for_window(window) * s_ui_scale)));
 }
 
 wxFont get_default_font_for_dpi(const wxWindow *window, int dpi)

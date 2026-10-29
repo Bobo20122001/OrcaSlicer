@@ -3205,6 +3205,13 @@ bool GUI_App::on_init_inner()
     wxLog::SetLogLevel(wxLOG_Message);
 #endif
 
+    // Orca CLC: user UI scale of this computer, applied before any font is created (G-02, G-05, G-07).
+    if (app_config != nullptr) {
+        const std::string ui_scale = app_config->get(ui_scale_config_key());
+        if (!ui_scale.empty() && ui_scale != "auto")
+            set_ui_scale(std::clamp(std::atof(ui_scale.c_str()) / 100., 0.5, 2.));
+    }
+
     ::Label::initSysFont();
 
     // Register wxInspector plugins for Orca custom controls

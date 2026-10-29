@@ -1693,6 +1693,18 @@ void PreferencesDialog::create_items()
     auto item_default_page     = create_item_combobox(_L("Default page"), _L("Set the page opened on startup."), "default_page", DefaultPage);
     g_sizer->Add(item_default_page);
 
+    // Orca CLC: UI scale per computer (G-01, G-02, G-05).
+    std::vector<wxString>    ui_scale_labels = {_L("Auto (Windows scaling)")};
+    std::vector<std::string> ui_scale_values = {"auto"};
+    for (int percent = 70; percent <= 150; percent += 10) {
+        ui_scale_labels.push_back(wxString::Format("%d%%", percent));
+        ui_scale_values.push_back(std::to_string(percent));
+    }
+    auto item_ui_scale = create_item_combobox(_L("UI scale"),
+        _L("Scales fonts, spacing and icons on this computer. The value is stored for each computer, so a data folder on a portable drive keeps one value per PC. Takes effect after a restart."),
+        ui_scale_config_key(), ui_scale_labels, ui_scale_values);
+    g_sizer->Add(item_ui_scale);
+
 #ifdef _WIN32
     auto item_darkmode         = create_item_darkmode(_L("Enable dark Mode"), "", "dark_color_mode");
     g_sizer->Add(item_darkmode);

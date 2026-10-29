@@ -92,6 +92,12 @@ void on_window_geometry(wxTopLevelWindow *tlw, std::function<void()> callback);
 
 enum { DPI_DEFAULT = 96 };
 
+// Orca CLC: user UI scale on top of the system DPI, 1 = automatic (G-01..G-07). It is stored per computer,
+// so one data directory on a portable drive keeps a separate value for each machine (G-02).
+void        set_ui_scale(double factor);
+double      get_ui_scale();
+std::string ui_scale_config_key();
+
 int get_dpi_for_window(const wxWindow *window);
 wxFont get_default_font_for_dpi(const wxWindow* window, int dpi);
 inline wxFont get_default_font(const wxWindow* window) { return get_default_font_for_dpi(window, get_dpi_for_window(window)); }

@@ -4,6 +4,7 @@
 #include "CalibUtils.hpp"
 #include "Flashforge.hpp"
 #include "libslic3r/Config.hpp"
+#include "libslic3r/CoreLayerCombine.hpp"
 #include "libslic3r_version.h"
 
 #include <boost/assert/source_location.hpp>
@@ -14444,8 +14445,8 @@ void Plater::priv::set_project_name(const wxString& project_name)
     if (!m_project_name.IsEmpty())
         wxGetApp().mainframe->update_title_colour_after_set_title();
 #else
-    wxGetApp().mainframe->SetTitle(m_project_name + " - OrcaSlicer");
-    wxGetApp().mainframe->topbar()->SetTitle(m_project_name);
+    wxGetApp().mainframe->SetTitle(m_project_name + " - OrcaSlicer CLC " + CLC_VERSION); // Orca CLC: fork version in the title (NF-06)
+    wxGetApp().mainframe->topbar()->SetTitle(m_project_name + "  -  CLC " + CLC_VERSION);
 #endif
 }
 
@@ -14464,8 +14465,8 @@ void Plater::priv::update_title_dirty_status()
     wxGetApp().mainframe->SetTitle(title);
     wxGetApp().mainframe->update_title_colour_after_set_title();
 #else
-    wxGetApp().mainframe->SetTitle(title + " - OrcaSlicer");
-    wxGetApp().mainframe->topbar()->SetTitle(title);
+    wxGetApp().mainframe->SetTitle(title + " - OrcaSlicer CLC " + CLC_VERSION);
+    wxGetApp().mainframe->topbar()->SetTitle(title + "  -  CLC " + CLC_VERSION);
 #endif    
 }
 

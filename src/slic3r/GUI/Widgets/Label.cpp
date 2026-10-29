@@ -1,6 +1,7 @@
 #include "libslic3r/Utils.hpp"
 #include "Label.hpp"
 #include "StaticBox.hpp"
+#include "../GUI_Utils.hpp"
 #include <wx/font.h>
 #include <string>
 #include <wx/dlimpexp.h>
@@ -9,6 +10,7 @@
 #include <wx/dynarray.h>
 #include <cstddef>
 #include <algorithm>
+#include <cmath>
 #include <wx/chartype.h>
 #include <wx/gdicmn.h>
 #include <wx/event.h>
@@ -33,6 +35,9 @@ wxFont Label::sysFont(int size, bool bold)
 #ifndef __APPLE__
     size = size * 4 / 5;
 #endif
+    // Orca CLC: user UI scale (G-03). At 100 % the size stays exactly as before (G-07).
+    if (Slic3r::GUI::get_ui_scale() != 1.)
+        size = std::max(1, int(std::lround(size * Slic3r::GUI::get_ui_scale())));
 
     wxString face = "HarmonyOS Sans SC";
 

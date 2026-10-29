@@ -1,0 +1,49 @@
+OrcaSlicer CLC - Core Layer Combine fuer den Prusa XL 5T
+=========================================================
+
+STARTEN
+  1. Zip in einen beliebigen Ordner entpacken (z. B. auf die SSD).
+  2. Start.bat doppelklicken. Das Programm nutzt den Ordner "data" neben Start.bat
+     fuer alle Einstellungen - auf jedem PC dieselben Profile.
+  3. Beim ersten Start erscheint kein Einrichtungsassistent; die Profile sind schon da.
+
+PROFIL WAEHLEN
+  Drucker:   Prusa XL 5T CLC   (Werkzeug 1 = 1,2-mm-Duese, Werkzeug 3 = 0,4-mm-Duese)
+  Prozess:   0.2mm CLC
+  Filament:  Slot 1 "PLA @XL CLC 1.2mm", Slots 2-5 "PLA @XL CLC 0.4mm"
+  Die Duesen im Drucker muessen dazu passen: 1,2 mm auf Werkzeug 1, 0,4 mm auf Werkzeug 3.
+  Der Start-G-Code prueft das (M862.1) und warnt am Drucker, wenn eine Duese nicht passt.
+
+WAS DAS FEATURE MACHT
+  Aussen druckt die feine 0,4-mm-Duese 3 Waende in 0,2-mm-Schichten (sichtbare Oberflaeche
+  wie gewohnt). Innen druckt die grobe 1,2-mm-Duese 2 Waende und das Infill in kombinierten
+  0,6-mm-Schichten: je 3 duenne Aussenschichten eine dicke Kernschicht. Ergebnis: dicke,
+  gut verbundene Kernbahnen, weniger Werkzeugwechsel als ohne Kombination.
+  Einstellungen: Prozess > Staerke > Erweitert > "Core layer combine" (Expertenmodus).
+  - Shell walls: Anzahl feiner Aussenwaende      - Core walls: Anzahl grober Kernwaende
+  - Core layer height: Hoehe der Kernschicht (mm oder % der Kernduese)
+  Die Vorschau zeigt die echten Hoehen (Ansicht "Schichthoehe") und Werkzeuge.
+
+BEKANNTE EINSCHRAENKUNGEN
+  - Prime Tower muss an sein (wird sonst als Fehler gemeldet).
+  - Keine variable Schichthoehe, kein Spiralvasen-Modus, kein Druck "Objekt fuer Objekt".
+  - Erste Schicht, Boden- und Deckschichten, Bruecken und schmale Stellen bleiben duenn
+    und werden mit der 0,4-mm-Duese gedruckt.
+  - Der Prime Tower bekommt auf den Schichten ohne Wechsel eine duenne Lage.
+  - Testversion: Drucktests mit diesem Paket stehen noch aus (siehe testprints\README.txt).
+
+UI-SKALIERUNG
+  Einstellungen > Allgemein > "UI scale": Auto (= Windows) oder 70-150 %. Der Wert gilt
+  nur fuer den PC, an dem er eingestellt wurde, und wirkt nach einem Neustart.
+
+WENN DAS PROGRAMM NICHT STARTET
+  - Fehlende "VCRUNTIME140.dll" / "MSVCP140.dll": Microsoft Visual C++ Redistributable
+    (x64, 2015-2022 und neuer) installieren lassen.
+  - Windows "Intelligente App-Steuerung" (Smart App Control) kann selbst gebaute, nicht
+    signierte Programme blockieren. Dann meldet Start.bat nichts und es oeffnet sich kein
+    Fenster. Abhilfe nur ueber die IT bzw. Windows-Sicherheit > App- und Browsersteuerung.
+  - Windows SmartScreen ("Der Computer wurde durch Windows geschuetzt"): "Weitere
+    Informationen" > "Trotzdem ausfuehren".
+
+Quelle und Dokumentation: github.com/Bobo20122001/OrcaSlicer, Branch feature/core-layer-combine,
+Ordner tools/core_layer_combine (Lastenheft, Status, Pruefskripte).

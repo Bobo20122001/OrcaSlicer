@@ -1,0 +1,9 @@
+{
+	"type": "filament",
+	"name": "PLA @XL CLC 1.2mm",
+	"inherits": "Generic PLA @Prusa XL",
+	"from": "User",
+	"version": "2.5.0.0",
+	"filament_max_volumetric_speed": ["17.5"],
+	"filament_retract_lift_below": ["0"]
+}
