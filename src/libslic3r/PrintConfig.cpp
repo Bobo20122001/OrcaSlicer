@@ -4912,6 +4912,32 @@ void PrintConfigDef::init_fff_params()
     def->mode = comAdvanced;
     def->set_default_value(new ConfigOptionInt(2));
 
+    def = this->add("core_shell_overlap", coPercent);
+    def->label = L("Core-shell overlap");
+    def->tooltip = L("How far the combined core reaches into the shell, as a percentage of the core wall line width. "
+                     "A small overlap bonds the core to the shell.");
+    def->sidetext = "%";
+    def->min = 0;
+    def->max = 100;
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionPercent(15));
+
+    def = this->add("core_avoid_extra_toolchanges", coBool);
+    def->label = L("Avoid extra tool changes");
+    def->tooltip = L("Combine core layers only in the top layer of each group. Core areas that would need a second "
+                     "tool change inside the group are printed thin with the shell filament instead.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(true));
+
+    def = this->add("core_toolchange_penalty", coFloat);
+    def->label = L("Tool change penalty");
+    def->tooltip = L("Weight of one tool change when planning the core layer groups, as core area printed once. "
+                     "Higher values combine more layers and change tools less often.");
+    def->sidetext = u8"mm²";
+    def->min = 0;
+    def->mode = comDevelop;
+    def->set_default_value(new ConfigOptionFloat(100));
+
     // BBS
     def          = this->add("enable_wrapping_detection", coBool);
     def->label   = L("Enable clumping detection");
@@ -12671,6 +12697,15 @@ std::map<std::string, std::string> validate(const FullPrintConfig &cfg, bool und
             std::string key(widths[i]);
             double abs_width = cfg.get_abs_value(key, max_nozzle_diameter);
             double allowed_max = (key == "bridge_line_width") ? min_nozzle_diameter : MAX_LINE_WIDTH_MULTIPLIER * max_nozzle_diameter;
+            // Orca CLC: a percentage refers to the nozzle of whichever extruder prints the bridge, so with
+            // mixed nozzles it may not be judged against the largest nozzle and then the smallest one.
+            if (key == "bridge_line_width" && max_nozzle_diameter > min_nozzle_diameter) {
+                const auto *opt = cfg.option<ConfigOptionFloatOrPercent>(key);
+                if (opt != nullptr && opt->percent) {
+                    abs_width   = opt->value * 0.01;
+                    allowed_max = 1.;
+                }
+            }
             if (abs_width > allowed_max) {
                 if (key == "bridge_line_width")
                     error_message.emplace(key, _u8L("Bridge line width must not exceed nozzle diameter: ") + std::to_string(abs_width));
