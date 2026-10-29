@@ -1,5 +1,6 @@
 #include "Flow.hpp"
 #include "Config.hpp"
+#include "CoreLayerCombine.hpp"
 #include "ExPolygon.hpp"
 #include "ExtrusionEntity.hpp"
 #include "Exception.hpp"
@@ -34,6 +35,7 @@
 #include <cassert>
 #include <string>
 #include <map>
+#include <memory>
 
 #include <boost/log/trivial.hpp>
 #include <boost/algorithm/clamp.hpp>
@@ -127,14 +129,24 @@ void LayerRegion::make_perimeters(const SurfaceCollection &slices, const LayerRe
         model_rotation_rad = std::atan2((double)m(1, 0), (double)m(0, 0));
     }
 
+    // Orca CLC: only the shell walls are generated per layer, with the nozzle of the outer wall filament.
+    // The core walls follow in clc_combine_core() at the combined height.
+    const bool                         clc = clc_enabled(region_config);
+    std::unique_ptr<PrintRegionConfig> shell_config;
+    if (clc) {
+        shell_config = std::make_unique<PrintRegionConfig>(region_config);
+        shell_config->wall_loops.value = region_config.shell_wall_loops.value;
+    }
+    const int shell_filament = region_config.outer_wall_filament_id.value;
+
     PerimeterGenerator g(
         // input:
         &slices,
         &compatible_regions,
         this->layer()->height,
         this->layer()->slice_z,
-        this->flow(frPerimeter),
-        &region_config,
+        clc ? clc_flow(*this, frPerimeter, shell_filament, this->layer()->height) : this->flow(frPerimeter),
+        clc ? shell_config.get() : &region_config,
         &this->layer()->object()->config(),
         &print_config,
         spiral_mode,
@@ -157,8 +169,9 @@ void LayerRegion::make_perimeters(const SurfaceCollection &slices, const LayerRe
 
     g.layer_id              = (int)this->layer()->id();
     g.ext_perimeter_flow    = this->flow(frExternalPerimeter);
-    g.overhang_flow         = this->bridging_flow(frPerimeter, object_config.thick_bridges);
-    g.solid_infill_flow     = this->flow(frSolidInfill);
+    g.overhang_flow         = clc ? clc_flow(*this, frPerimeter, shell_filament, this->layer()->height, true, object_config.thick_bridges) :
+                                    this->bridging_flow(frPerimeter, object_config.thick_bridges);
+    g.solid_infill_flow     = clc ? clc_flow(*this, frSolidInfill, shell_filament, this->layer()->height) : this->flow(frSolidInfill);
 
     // Cumulative sum of polygons over all the regions, less what the lower layer could not print.
     ExPolygons lower_slices;

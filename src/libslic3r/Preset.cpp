@@ -1342,7 +1342,8 @@ static std::vector<std::string> s_Preset_print_options{
     "precise_z_height",
     "infill_combination",
     "infill_combination_max_layer_height", /*"adaptive_layer_height",*/
-    "core_layer_combine", "core_layer_height", "shell_wall_loops", "core_wall_loops",
+    "core_layer_combine", "core_layer_height", "shell_wall_loops", "core_wall_loops", "core_shell_overlap",
+    "core_avoid_extra_toolchanges", "core_toolchange_penalty",
     "support_bottom_interface_spacing",
     "enable_overhang_speed",
     "slowdown_for_curled_perimeters",

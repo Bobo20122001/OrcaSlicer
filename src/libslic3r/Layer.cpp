@@ -200,7 +200,10 @@ bool Layer::is_perimeter_compatible(const Print& print, const PrintRegion& a, co
         && config.core_layer_combine      == other_config.core_layer_combine
         && config.core_layer_height       == other_config.core_layer_height
         && config.shell_wall_loops        == other_config.shell_wall_loops
-        && config.core_wall_loops         == other_config.core_wall_loops;
+        && config.core_wall_loops         == other_config.core_wall_loops
+        && config.core_shell_overlap      == other_config.core_shell_overlap
+        && config.core_avoid_extra_toolchanges == other_config.core_avoid_extra_toolchanges
+        && config.core_toolchange_penalty == other_config.core_toolchange_penalty;
 }
 
 // Here the perimeters are created cummulatively for all layer regions sharing the same parameters influencing the perimeters.

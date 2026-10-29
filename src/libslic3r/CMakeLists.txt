@@ -114,6 +114,8 @@ set(lisbslic3r_sources
     Config.hpp
     ConnectedBodies.cpp
     ConnectedBodies.hpp
+    CoreLayerCombine.cpp
+    CoreLayerCombine.hpp
     ContourZ.cpp
     CustomGCode.cpp
     CustomGCode.hpp

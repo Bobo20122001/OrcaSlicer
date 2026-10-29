@@ -74,6 +74,15 @@ public:
     // BBS: Unspecified fill polygons, used for interecting when we don't want the infill/perimeter overlap
     ExPolygons                  fill_no_overlap_expolygons;
 
+    // Orca CLC: combined core fills printed in this layer, see CoreLayerCombine.hpp.
+    struct CoreFill
+    {
+        ExPolygons     area;
+        double         thickness;
+        unsigned short layers;
+    };
+    std::vector<CoreFill>       core_fills;
+
     // collection of expolygons representing the bridged areas (thus not
     // needing support material)
 //    Polygons                    bridged;

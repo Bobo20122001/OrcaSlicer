@@ -843,7 +843,8 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig *config, in
     toggle_line("infill_combination_max_layer_height", have_combined_infill, -1, _L("Enable infill combination and use nonzero sparse infill density to show this setting."));
 
     bool have_core_layer_combine = config->opt_bool("core_layer_combine");
-    for (auto el : { "core_layer_height", "shell_wall_loops", "core_wall_loops" })
+    for (auto el : { "core_layer_height", "shell_wall_loops", "core_wall_loops", "core_shell_overlap", "core_avoid_extra_toolchanges",
+                     "core_toolchange_penalty" })
         toggle_line(el, have_core_layer_combine, -1, _L("Enable core layer combine to show this setting."));
     toggle_field("wall_loops", !have_core_layer_combine, -1, _L("Core layer combine prints shell walls plus core walls instead of this wall count."));
 

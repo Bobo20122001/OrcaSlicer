@@ -2,6 +2,7 @@
 #include <tuple>
 #include "BoundingBox.hpp"
 #include "Circle.hpp"
+#include "CoreLayerCombine.hpp"
 #include "Config.hpp"
 #include "GCode/GCodeProcessor.hpp"
 #include "Flow.hpp"
@@ -7202,7 +7203,11 @@ LayerResult GCode::process_layer(
                             }
                         };
 
-                        const auto is_inner = [](const ExtrusionEntity *entity) { return is_inner_wall(*entity); };
+                        // Orca CLC: the shell walls stay with the outer wall filament, only core walls are "inner".
+                        const bool clc      = clc_enabled(region.config());
+                        const auto is_inner = [clc, &region](const ExtrusionEntity *entity) {
+                            return clc ? clc_is_core(*entity, region.config()) : is_inner_wall(*entity);
+                        };
                         const size_t inner_count = entity_type == ObjectByExtruder::Island::Region::PERIMETERS ?
                             std::count_if(extrusions->entities.begin(), extrusions->entities.end(), is_inner) : 0;
                         bool split_mixed_perimeters =
@@ -8517,6 +8522,25 @@ std::string GCode::extrude_loop(const ExtrusionLoop&                       loop_
     if (!m_config.spiral_mode && description == "perimeter") {
         assert(m_layer != nullptr);
         m_seam_placer.place_seam(m_layer, loop, last_pos, seam_overhang);
+        // Orca CLC: a core wall starts at a point that moves from group to group and stays at least 5 mm away
+        // from the aligned shell seam, so the start of the core tool never builds up at one spot (F-50).
+        if (clc_enabled(m_config) && clc_is_core(loop_ref, m_config)) {
+            const Polyline polyline = loop.as_polyline();
+            const double   length   = polyline.length();
+            if (length > scale_(10.)) {
+                double remaining = scale_(5.) + std::fmod(double(m_layer->id()) * 0.6180339887, 1.) * (length - scale_(10.));
+                for (size_t i = 1; i < polyline.points.size(); ++ i) {
+                    const Vec2d  a   = polyline.points[i - 1].cast<double>();
+                    const Vec2d  b   = polyline.points[i].cast<double>();
+                    const double seg = (b - a).norm();
+                    if (seg >= remaining) {
+                        loop.split_at((a + (b - a) * (remaining / seg)).cast<coord_t>(), false);
+                        break;
+                    }
+                    remaining -= seg;
+                }
+            }
+        }
     } else
         loop.split_at(last_pos, false);
 

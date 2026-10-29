@@ -30,6 +30,7 @@
 #include <ostream>
 #include "ExPolygon.hpp"
 #include "Layer.hpp"
+#include "CoreLayerCombine.hpp"
 #include "FilamentGroup.hpp"
 #include <memory>
 #include "FilamentGroupUtils.hpp"
@@ -2008,6 +2009,10 @@ StringObjectException Print::validate(std::vector<StringObjectException> *warnin
         w.object  = object;
         add_warning(std::move(w));
     };
+
+    // Orca CLC: V-01 to V-12.
+    if (StringObjectException clc_error = clc_validate(*this, warn); !clc_error.string.empty())
+        return clc_error;
 
     std::vector<unsigned int> extruders = this->extruders();
     unsigned int nozzles = m_config.nozzle_diameter.size();

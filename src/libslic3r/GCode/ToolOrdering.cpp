@@ -1,6 +1,7 @@
 #include "libslic3r/Exception.hpp"
 #include "libslic3r/CustomGCode.hpp"
 #include "libslic3r/Config.hpp"
+#include "libslic3r/CoreLayerCombine.hpp"
 #include "ExtrusionEntity.hpp"
 #include "libslic3r/ObjectID.hpp"
 #include "libslic3r/FilamentGroup.hpp"
@@ -143,6 +144,24 @@ unsigned int LayerTools::internal_solid_filament_id(const PrintRegion &region) c
 // 1 based filament of an island's extrusions; the tool ordering and the G-code export must agree on it.
 static unsigned int region_filament(const ExtrusionEntityCollection &extrusions, const PrintRegionConfig &config)
 {
+    // Orca CLC: only the combined core uses the core filaments, everything thin goes to the shell filament
+    // (F-04, F-13, F-15, F-16). Top and bottom surfaces keep their own filaments.
+    if (clc_enabled(config)) {
+        if (!extrusions.has_infill())
+            return clc_all_core(extrusions, config) ? config.inner_wall_filament_id.value : config.outer_wall_filament_id.value;
+        bool top = false, bottom = false;
+        for (const ExtrusionEntity *ee : extrusions.entities) {
+            top    |= ee->role() == erTopSolidInfill || ee->role() == erIroning;
+            bottom |= ee->role() == erBottomSurface;
+        }
+        if (top)
+            return config.top_surface_filament_id.value;
+        if (bottom)
+            return config.bottom_surface_filament_id.value;
+        if (!clc_any_core(extrusions, config))
+            return config.outer_wall_filament_id.value;
+        return extrusions.has_solid_infill() ? config.internal_solid_filament_id.value : config.sparse_infill_filament_id.value;
+    }
     if (extrusions.has_infill()) {
         if (!extrusions.has_solid_infill())
             return config.sparse_infill_filament_id.value;
@@ -440,6 +459,29 @@ bool ToolOrdering::insert_wipe_tower_extruder()
     return changed;
 }
 
+// Orca CLC: the core filaments print last in a layer, after the shell of the group is complete (F-30, F-31).
+static void clc_print_core_last(std::vector<LayerTools> &layer_tools, const std::vector<const PrintObject*> &objects)
+{
+    std::vector<unsigned int> core, shell;
+    for (const PrintObject *object : objects)
+        for (size_t i = 0; i < object->num_printing_regions(); ++ i) {
+            const PrintRegionConfig &config = object->printing_region(i).config();
+            if (!clc_enabled(config))
+                continue;
+            for (int id : { config.inner_wall_filament_id.value, config.sparse_infill_filament_id.value, config.internal_solid_filament_id.value })
+                core.push_back(unsigned(id - 1));
+            for (int id : { config.outer_wall_filament_id.value, config.top_surface_filament_id.value, config.bottom_surface_filament_id.value })
+                shell.push_back(unsigned(id - 1));
+        }
+    if (core.empty())
+        return;
+    auto is_core = [&core, &shell](unsigned int extruder) {
+        return std::find(core.begin(), core.end(), extruder) != core.end() && std::find(shell.begin(), shell.end(), extruder) == shell.end();
+    };
+    for (LayerTools &lt : layer_tools)
+        std::stable_partition(lt.extruders.begin(), lt.extruders.end(), [&is_core](unsigned int extruder) { return !is_core(extruder); });
+}
+
 void ToolOrdering::sort_and_build_data(const Print& print, unsigned int first_extruder, bool prime_multi_material)
 {
     // if first extruder is -1, we can decide the first layer tool order before doing reorder function
@@ -448,6 +490,10 @@ void ToolOrdering::sort_and_build_data(const Print& print, unsigned int first_ex
     this->resolve_mixed_filaments(print.config());
     reorder_extruders_for_minimum_flush_volume(reorder_first_layer);
     this->enforce_mixed_component_order();
+    std::vector<const PrintObject*> clc_objects;
+    for (const PrintObject *object : print.objects())
+        clc_objects.push_back(object);
+    clc_print_core_last(m_layer_tools, clc_objects);
     m_sorted = true;
 
     double max_layer_height = 0.;
@@ -470,6 +516,7 @@ void ToolOrdering::sort_and_build_data(const Print& print, unsigned int first_ex
         // Orca reorders a second time here (BBS has no such path); re-enforce so the
         // mixed sub-layer component order survives the extra pass.
         this->enforce_mixed_component_order();
+        clc_print_core_last(m_layer_tools, clc_objects);
         this->fill_wipe_tower_partitions(print.config(), object_bottom_z, max_layer_height);
     }
 
@@ -484,6 +531,7 @@ void ToolOrdering::sort_and_build_data(const PrintObject& object , unsigned int 
     this->resolve_mixed_filaments(object.print()->config());
     reorder_extruders_for_minimum_flush_volume(reorder_first_layer);
     this->enforce_mixed_component_order();
+    clc_print_core_last(m_layer_tools, { &object });
     m_sorted = true;
 
     double max_layer_height = calc_max_layer_height(object.print()->config(), object.config().layer_height);
@@ -494,6 +542,7 @@ void ToolOrdering::sort_and_build_data(const PrintObject& object , unsigned int 
         // Orca reorders a second time here (BBS has no such path); re-enforce so the
         // mixed sub-layer component order survives the extra pass.
         this->enforce_mixed_component_order();
+        clc_print_core_last(m_layer_tools, { &object });
         this->fill_wipe_tower_partitions(object.print()->config(), object.layers().front()->print_z - object.layers().front()->height, max_layer_height);
     }
 
@@ -856,11 +905,15 @@ void ToolOrdering::collect_extruders(const PrintObject &object, const std::vecto
                 if (something_nonoverriddable){
                		layer_tools.extruders.emplace_back((extruder_override == 0) ? region.config().outer_wall_filament_id.value : extruder_override);
                     const ExtrusionEntitiesPtr &islands = layerm->perimeters.entities;
-                    const bool has_inner_wall = std::any_of(islands.begin(), islands.end(), [](const ExtrusionEntity *island) {
+                    // Orca CLC: the inner wall filament prints the core walls only, which exist in the top layer of a group.
+                    const bool clc = clc_enabled(region.config());
+                    const bool has_inner_wall = std::any_of(islands.begin(), islands.end(), [clc, &region](const ExtrusionEntity *island) {
+                        if (clc)
+                            return clc_any_core(*static_cast<const ExtrusionEntityCollection*>(island), region.config());
                         const ExtrusionEntitiesPtr &walls = static_cast<const ExtrusionEntityCollection*>(island)->entities;
                         return std::any_of(walls.begin(), walls.end(), [](const ExtrusionEntity *ee) { return is_inner_wall(*ee); });
                     });
-                    if (extruder_override == 0 && region.config().wall_loops.value > 1 && has_inner_wall)
+                    if (extruder_override == 0 && (clc || region.config().wall_loops.value > 1) && has_inner_wall)
                         layer_tools.extruders.emplace_back(region.config().inner_wall_filament_id.value);
                     if (layerCount == 0) {
                         firstLayerExtruders.emplace_back((extruder_override == 0) ? region.config().outer_wall_filament_id.value : extruder_override);

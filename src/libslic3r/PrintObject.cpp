@@ -1,5 +1,6 @@
 #include "ExPolygon.hpp"
 #include "Config.hpp"
+#include "CoreLayerCombine.hpp"
 #include "Exception.hpp"
 #include "Line.hpp"
 #include "Flow.hpp"
@@ -621,6 +622,10 @@ void PrintObject::make_perimeters()
     m_print->throw_if_canceled();
     BOOST_LOG_TRIVIAL(debug) << "Generating perimeters in parallel - end";
 
+    // Orca CLC: core walls of the combined layers, needs the shell walls of all layers.
+    clc_combine_core(*this);
+    m_print->throw_if_canceled();
+
     this->set_done(posPerimeters);
 }
 
@@ -792,6 +797,8 @@ void PrintObject::prepare_infill()
     // combine fill surfaces to honor the "infill every N layers" option
     this->combine_infill();
     m_print->throw_if_canceled();
+    // Orca CLC: thickness of the combined core fills.
+    clc_apply_core_fills(*this);
 
 #ifdef SLIC3R_DEBUG_SLICE_PROCESSING
     for (size_t region_id = 0; region_id < this->num_printing_regions(); ++ region_id) {
@@ -1510,6 +1517,9 @@ bool PrintObject::invalidate_state_by_config_options(
             || opt_key == "wipe_on_loops"
             || opt_key == "wipe_speed"
             || opt_key == "core_layer_combine"
+            || opt_key == "core_shell_overlap"
+            || opt_key == "core_avoid_extra_toolchanges"
+            || opt_key == "core_toolchange_penalty"
             || opt_key == "core_layer_height"
             || opt_key == "shell_wall_loops"
             || opt_key == "core_wall_loops") {
@@ -4969,7 +4979,8 @@ void PrintObject::combine_infill()
     for (size_t region_id = 0; region_id < this->num_printing_regions(); ++ region_id) {
         const PrintRegion &region = this->printing_region(region_id);
         //BBS
-        const bool enable_combine_infill = region.config().infill_combination.value;
+        // Orca CLC: core layer combine takes over the combination of its regions (V-09).
+        const bool enable_combine_infill = region.config().infill_combination.value && !clc_enabled(region.config());
         if (enable_combine_infill == false || region.config().sparse_infill_density == 0.)
             continue;
 

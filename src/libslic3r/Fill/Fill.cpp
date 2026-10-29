@@ -16,6 +16,7 @@
 #include <utility>
 
 #include "../ClipperUtils.hpp"
+#include "../CoreLayerCombine.hpp"
 #include "../Geometry.hpp"
 #include "../Layer.hpp"
 #include "../Print.hpp"
@@ -1071,6 +1072,15 @@ std::vector<SurfaceFill> group_fills(const Layer &layer, LockRegionParam &lock_p
 					//Orca: enable thick bridge based on config
 					layerm.bridging_flow(extrusion_role, is_thick_bridge) :
 					layerm.flow(extrusion_role, (surface.thickness == -1) ? layer.height : surface.thickness);
+                // Orca CLC: a thin fill of a core layer combine region is printed by the shell filament, top and bottom
+                // surfaces by their own; either way its width refers to the nozzle of that filament (F-05, F-13, F-15).
+                const bool clc_thin = clc_enabled(region_config) && surface.thickness_layers <= 1;
+                if (clc_thin) {
+                    if (params.extrusion_role != erTopSolidInfill && params.extrusion_role != erBottomSurface)
+                        params.extruder = region_config.outer_wall_filament_id;
+                    params.flow = clc_flow(layerm, extrusion_role, int(params.extruder), (surface.thickness == -1) ? layer.height : surface.thickness,
+                                           params.bridge, is_thick_bridge);
+                }
 
 				params.role_speed = 0;
                 if (params.extrusion_role == erBridgeInfill)
@@ -1092,7 +1102,8 @@ std::vector<SurfaceFill> group_fills(const Layer &layer, LockRegionParam &lock_p
 		        } else {
 					// Internal infill. Calculating infill line spacing independent of the current layer height and 1st layer status,
 					// so that internall infill will be aligned over all layers of the current region.
-		            params.spacing = layerm.region().flow(*layer.object(), frInfill, layer.object()->config().layer_height, false).spacing();
+		            params.spacing = clc_thin ? params.flow.spacing() :
+		                layerm.region().flow(*layer.object(), frInfill, layer.object()->config().layer_height, false).spacing();
 		            // Anchor a sparse infill to inner perimeters with the following anchor length:
 			        params.anchor_length = float(region_config.infill_anchor);
 					if (region_config.infill_anchor.percent)
@@ -1251,6 +1262,11 @@ std::vector<SurfaceFill> group_fills(const Layer &layer, LockRegionParam &lock_p
 
                 // calculate the actual flow we'll be using for this infill
 				params.flow = layerm.flow(frSolidInfill);
+                // Orca CLC: narrow solid infill is thin, so it belongs to the shell filament.
+                if (clc_enabled(region_config)) {
+                    params.extruder = region_config.outer_wall_filament_id;
+                    params.flow     = clc_flow(layerm, frSolidInfill, int(params.extruder), layer.height);
+                }
 		        params.spacing = params.flow.spacing();
 				surface_fills.emplace_back(params);
 				surface_fills.back().surface.surface_type = stInternalSolid;
@@ -1518,9 +1534,15 @@ void Layer::make_fills(const FillAdaptive::RegionOctrees* fill_octrees, FillLigh
                     params.density = 1.0f - (1.0f - elefant_density) * (elefant_layers - (f->layer_id - 1)) / elefant_layers; // Reverse calculation - The higher layer number means the higher density. Counting starts from the second layer.
             }
             // make fill
+            ExtrusionEntitiesPtr &region_fills = m_regions[surface_fill.region_id]->fills.entities;
+            const size_t          fills_before = region_fills.size();
 			f->fill_surface_extrusion(&surface_fill.surface,
 				params,
-				m_regions[surface_fill.region_id]->fills.entities);
+				region_fills);
+            // Orca CLC: mark the combined core fill for the core filaments.
+            if (surface_fill.surface.thickness_layers > 1 && clc_enabled(m_regions[surface_fill.region_id]->region().config()))
+                for (size_t i = fills_before; i < region_fills.size(); ++ i)
+                    clc_tag_core_fill(*region_fills[i]);
 		}
     }
 

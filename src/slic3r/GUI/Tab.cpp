@@ -3239,6 +3239,9 @@ void TabPrint::build()
         optgroup->append_single_option_line("core_layer_height");
         optgroup->append_single_option_line("shell_wall_loops");
         optgroup->append_single_option_line("core_wall_loops");
+        optgroup->append_single_option_line("core_shell_overlap");
+        optgroup->append_single_option_line("core_avoid_extra_toolchanges");
+        optgroup->append_single_option_line("core_toolchange_penalty");
         optgroup->append_single_option_line("detect_narrow_internal_solid_infill", "strength_settings_advanced#detect-narrow-internal-solid-infill");
         optgroup->append_single_option_line("ensure_vertical_shell_thickness", "strength_settings_advanced#ensure-vertical-shell-thickness");
 
